@@ -14,32 +14,32 @@ namespace fs = std::experimental::filesystem;
 #include "src/middlewares/file.hpp"
 #include "src/middlewares/exceptions.hpp"
 
-
+namespace TinyCDN::Middleware::File {
 auto FileUploadingSession::uploadFile(std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned) {
-  
+
   // fileBucket bucket;
   // this->assignBucket();
 
   // If wantsOwned, determine if the user has existing FileBuckets that take these types
   if (wantsOwned) {
-    
+    return std::make_tuple(1, static_cast<std::string>("test"));
   }
   else {
     // First remove all full FileBuckets
     std::remove_if(currentFileBuckets.begin(), currentFileBuckets.end(), [](auto const& fb) {
-        return fb->size >= fb->allocatedSize;
+      return fb->size >= fb->allocatedSize;
     });
 
     // Check if there is a ready bucket that supports this file
     auto maybeBucket = std::find_if(currentFileBuckets.begin(), currentFileBuckets.end(), [contentType, fileType, fileSize](const auto& b) {
-        return
-        // If this FileBucket has enough free space for this file,
-        (b->allocatedSize - b->size) > fileSize
-        // supports this file's ContentType,
-        && std::find(b->types.begin(), b->types.end(), contentType) != b->types.end();
-        // and supports this file's FileType.
-        //&& std::find(b->fileTypes.begin(), b->fileTypes.end(), fileType) != b=>fileTypes.end();
-      });
+      return
+          // If this FileBucket has enough free space for this file,
+          (b->allocatedSize - b->size) > fileSize
+          // supports this file's ContentType,
+          && std::find(b->types.begin(), b->types.end(), contentType) != b->types.end();
+      // and supports this file's FileType.
+      //&& std::find(b->fileTypes.begin(), b->fileTypes.end(), fileType) != b=>fileTypes.end();
+    });
 
     if (maybeBucket == currentFileBuckets.end()) {
       // i.e. Audio -> read MANIFEST.in in Public/Audio/
@@ -91,24 +91,24 @@ std::unique_ptr<FileBucket> FileBucketAllocator::findOrCreate(
   // Introspective sort
   // TODO
 
-//  auto& assignedBucket = std::find_if(.begin(), .end(), [contentType, fileType, fileSize](auto const& b) {
-//      return
-//      // If this FileBucket has enough free space for this file,
-//      b.maxSize - b.size > fileSize
-//      // supports this file's ContentType,
-//      && std::find(b.contentTypes.begin(), b.contentTypes.end(), contentType) != b.contentTypes.end()
-//      // and supports this file's FileType.
-//      && std::find(b.fileTypes.begin(), b.fileTypes.end(), fileType) != b.fileTypes.end()
-//    });
+  //  auto& assignedBucket = std::find_if(.begin(), .end(), [contentType, fileType, fileSize](auto const& b) {
+  //      return
+  //      // If this FileBucket has enough free space for this file,
+  //      b.maxSize - b.size > fileSize
+  //      // supports this file's ContentType,
+  //      && std::find(b.contentTypes.begin(), b.contentTypes.end(), contentType) != b.contentTypes.end()
+  //      // and supports this file's FileType.
+  //      && std::find(b.fileTypes.begin(), b.fileTypes.end(), fileType) != b.fileTypes.end()
+  //    });
 
   bucketExists = false;
 
-//  if (bucketExists) {
-//    //return FileBucket{}
-//  }
-// else {
+  //  if (bucketExists) {
+  //    //return FileBucket{}
+  //  }
+  // else {
   return this->createBucket(copyable, owned, registry->defaultBucketSize, types, tags);
-// }
+  // }
 };
 
 std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
@@ -116,7 +116,7 @@ std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
     bool owned,
     Size size,
     std::vector<std::string> types,
-//    std::string fileType,
+    //    std::string fileType,
     std::vector<std::string> tags) {
 
   // Assign semi-permanent location
@@ -165,7 +165,7 @@ FileBucket::FileBucket (int id, Size allocatedSize, std::vector<std::string> typ
 //}
 
 std::shared_ptr<StoredFile> FileBucket::createStoredFile(fs::path tmpfile, Size fileSize, bool temporary) {
-// tmpfile is the uploaded file stored in /tmp/
+  // tmpfile is the uploaded file stored in /tmp/
   auto temporaryFile = std::make_shared<StoredFile>(location, fileSize, temporary);
   openFiles.push_back(temporaryFile);
   return temporaryFile;
@@ -211,11 +211,11 @@ auto FileBucketRegistryItemConverter::convertField(std::string field, std::strin
 
 auto FileBucketRegistryItemConverter::convertToValue() {
   return std::make_unique<FileBucket>(
-    params->id,
-    Size{params->assignedSize},
-    params->location,
-    params->types,
-    this->registry);
+        params->id,
+        Size{params->assignedSize},
+        params->location,
+        params->types,
+        this->registry);
 }
 
 auto FileBucketRegistry::loadRegistry() {
@@ -255,4 +255,5 @@ auto FileBucketRegistry::loadRegistry() {
   if (registryFile.bad()) {
     throw FileBucketRegistryException(*this, 0, "Error while loading Registry file");
   }
+}
 }

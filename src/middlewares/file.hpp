@@ -9,11 +9,12 @@
 #include <fstream>
 #include <variant>
 
-#include "src/utility.cpp"
-#include "src/storedfile.cpp"
+#include "src/utility.hpp"
+#include "src/storedfile.h"
 
 namespace fs = std::experimental::filesystem;
 
+namespace TinyCDN::Middleware::File {
 
 // struct TypedFileKeystore {
 //   // std::unordered_map<tokenType, std::ifstream& fileData> ;
@@ -46,7 +47,7 @@ struct FileBucket {
   // FileContainer<FileType>& retrieveFile();
   // void stFile(tokenType key, FileContainer<FileType>& file);
   //
-  // FileBucket(size ) 
+  // FileBucket(size )
   // copy
 
   // TODO gensym
@@ -64,12 +65,12 @@ struct FileBucket {
   auto inline assignStoredFileSize(StoredFile newContentFile) {
     std::ifstream f;
     f.open(newContentFile.location, std::ios_base::binary | std::ios_base::in);
-      if (!f.good() || f.eof() || !f.is_open()) {
-          throw FileBucketException(*this, 2);
-      }
-      f.seekg(0, std::ios_base::beg);
-      std::ifstream::pos_type begin_pos = f.tellg();
-      f.seekg(0, std::ios_base::end);
+    if (!f.good() || f.eof() || !f.is_open()) {
+      throw FileBucketException(*this, 2);
+    }
+    f.seekg(0, std::ios_base::beg);
+    std::ifstream::pos_type begin_pos = f.tellg();
+    f.seekg(0, std::ios_base::end);
     return Size{static_cast<uintmax_t>(f.tellg() - begin_pos)};
   }
 
@@ -206,11 +207,12 @@ struct FileBucketAllocator {
       bool owned,
       Size size,
       std::vector<std::string> types,
-  //    std::string fileType,
+      //    std::string fileType,
       std::vector<std::string> tags);
 
   FileBucketAllocator(std::shared_ptr<FileBucketRegistry> registry);
 };
+}
 
 // this should be a concept
 // struct Keystore {

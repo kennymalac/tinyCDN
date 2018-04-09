@@ -1,3 +1,4 @@
+#include <string>
 #include <iostream>
 
 #include "master.hpp"
@@ -27,7 +28,7 @@ int main() {
     std::string CDNDomain;
     std::cin >> CDNDomain;
 
-    CDNMaster master(false);
+    TinyCDN::CDNMaster master(false);
     master.spawnCDN();
 
     std::cout << "Master spawned. No slaves have been created.";

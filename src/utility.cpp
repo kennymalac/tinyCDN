@@ -1,36 +1,11 @@
-#pragma once
-
 #include <string>
 #include <vector>
 #include <memory>
 #include <fstream>
 
-#include "src/middlewares/exceptions.hpp"
+#include "utility.hpp"
 
-struct Size {
-  // Immutable
-  const uintmax_t size;
-  Size(uintmax_t size) : size(size) {}
-};
-
-Size operator+(Size S, Size S2) {
-  return Size{S.size + S2.size};
-}
-Size operator-(Size S, Size S2) {
-  return Size{S.size - S2.size};
-}
-Size operator*(Size S, Size S2) {
-  return Size{S.size * S2.size};
-}
-Size operator/(Size S, Size S2) {
-  return Size{S.size / S2.size};
-}
-bool operator>(Size S, Size S2) {
-  return S.size > S2.size;
-}
-bool operator>=(Size S, Size S2) {
-  return S.size >= S2.size;
-}
+namespace TinyCDN {
 
 template <typename t>
 std::string asCSV(t container) {
@@ -43,7 +18,7 @@ std::string asCSV(t container) {
   return csv;
 }
 
-auto fromCSV(std::string csv) {
+std::vector<std::string> fromCSV(std::string csv) {
   std::vector<std::string> values;
 
   // Check if there is only one value, or no value at all
@@ -74,6 +49,7 @@ auto fromCSV(std::string csv) {
   }
 
   return values;
+}
 }
 
 // struct StringConverter {

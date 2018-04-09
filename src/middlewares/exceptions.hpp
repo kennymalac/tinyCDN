@@ -6,11 +6,12 @@
 #include <sstream>
 #include <string>
 
+namespace TinyCDN::Middleware::File {
 struct FileBucket;
 struct FileBucketRegistry;
 
 class FileBucketException : public std::runtime_error {
- public:
+public:
 
   FileBucketException(const FileBucket &fb, int code);
 
@@ -34,7 +35,7 @@ class FileBucketException : public std::runtime_error {
     return errorResponse.str().c_str();
   }
 
- private:
+private:
   int code;
   FileBucket& filebucket;
 
@@ -70,3 +71,4 @@ private:
 
   static std::ostringstream errorResponse;
 };
+}

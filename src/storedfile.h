@@ -3,8 +3,9 @@
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 
-#include "src/utility.cpp"
+#include "src/utility.hpp"
 
+namespace TinyCDN {
 
 struct StoredFile
 {
@@ -14,3 +15,4 @@ struct StoredFile
 
   StoredFile(std::string location, Size size, bool temporary);
 };
+}

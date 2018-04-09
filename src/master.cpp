@@ -1,17 +1,22 @@
 #include <fstream>
 #include <memory>
+#include <experimental/filesystem>
 
+
+namespace fs = std::experimental::filesystem;
 #include "master.hpp"
 
+namespace TinyCDN {
 void CDNMaster::spawnCDN() {
   // return statusfield
 
   // initialize a first-time registry
-  session->registry = std::make_shared<FileBucketRegistry>(
-    fs::current_path(), "REGISTRY");
+  session->registry = std::make_shared<Middleware::File::FileBucketRegistry>(
+        fs::current_path(), "REGISTRY");
 
   if (!this->existing) {
     std::ofstream registryFile("REGISTRY");
     registryFile << "";
   }
 };
+}

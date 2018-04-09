@@ -5,9 +5,9 @@ namespace fs = std::experimental::filesystem;
 
 #include "middlewares/file.hpp"
 
-
+namespace TinyCDN {
 struct CDNMasterSession {
-  std::shared_ptr<FileBucketRegistry> registry;
+  std::shared_ptr<Middleware::File::FileBucketRegistry> registry;
 
   // uploadSessions;
   // hostingSessions;
@@ -29,5 +29,6 @@ public:
 
   CDNMaster(bool existing) : existing(existing) {
     session = std::make_unique<CDNMasterSession>();
-  };
+  }
 };
+}
