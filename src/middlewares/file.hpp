@@ -9,8 +9,9 @@
 #include <fstream>
 #include <variant>
 
-#include "src/utility.hpp"
-#include "src/storedfile.h"
+#include "../utility.hpp"
+#include "../storedfile.h"
+#include "filestorage.hpp"
 
 namespace fs = std::experimental::filesystem;
 
@@ -55,6 +56,7 @@ struct FileBucket {
   Size size;
   Size allocatedSize;
   std::shared_ptr<FileBucketRegistry> registry;
+  std::unique_ptr<FileStorage::Haystack> storage;
   fs::path location;
   // NOTE stringly typed for now
   std::vector<std::string> types;

@@ -11,8 +11,9 @@
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 
-#include "src/middlewares/file.hpp"
-#include "src/middlewares/exceptions.hpp"
+#include "file.hpp"
+#include "exceptions.hpp"
+#include "filestorage.hpp"
 
 namespace TinyCDN::Middleware::File {
 auto FileUploadingSession::uploadFile(std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned) {
@@ -135,6 +136,7 @@ std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
     fs::create_directory(location / fs::path(t));
   }
   bucket->location = location;
+  bucket->storage = std::make_unique<FileStorage::Haystack>(bucket->allocatedSize, bucket->location, false);
 
   // Save file bucket information to REGISTRY
   registry->registerItem(bucket);
@@ -170,6 +172,14 @@ std::shared_ptr<StoredFile> FileBucket::createStoredFile(fs::path tmpfile, Size 
   openFiles.push_back(temporaryFile);
   return temporaryFile;
 }
+
+//std::vector<std::unique_ptr<FileStorage::HaystackBlock>> FileBucket::getFile(std::size_t position) {
+//  std::vector<std::unique_ptr<FileStorage::HaystackBlock>> test;
+//  for (auto block : storage->cseek(position)) {
+//    // Get block value from future, push to vector
+//    test.push_back(block.get());
+//  }
+//}
 
 // auto location = bucket.uid / name;
 // if (fs::exists(location)) {
@@ -210,12 +220,16 @@ auto FileBucketRegistryItemConverter::convertField(std::string field, std::strin
 }
 
 auto FileBucketRegistryItemConverter::convertToValue() {
-  return std::make_unique<FileBucket>(
+  auto fb = std::make_unique<FileBucket>(
         params->id,
         Size{params->assignedSize},
         params->location,
         params->types,
         this->registry);
+
+  fb->storage = std::make_unique<FileStorage::Haystack>(fb->allocatedSize, fb->location, false);
+
+  return fb;
 }
 
 auto FileBucketRegistry::loadRegistry() {

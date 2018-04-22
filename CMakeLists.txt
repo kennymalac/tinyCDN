@@ -19,18 +19,25 @@ set(BASE_TEST_DIR ${PROJECT_SOURCE_DIR}/test)
 
 # )
 
+set(PROJECT_SOURCE_DIR, "src/")
 
-file(GLOB SOURCES
-  "src/utility.hpp"
-  "src/utility.cpp"
-  "src/middlewares/file.hpp"
-  "src/storedfile.h"
-  "src/storedfile.cpp"
-  "src/middlewares/exceptions.hpp"
-  "src/middlewares/file.cpp"
-  "src/master.hpp"
-  "src/master.cpp"
+# add_subdirectory("src/")
+
+set(SOURCES
+  src/utility.hpp
+  src/utility.cpp
+  src/middlewares/file.hpp
+  src/storedfile.h
+  src/storedfile.cpp
+  src/middlewares/exceptions.hpp
+  src/middlewares/file.cpp
+  src/middlewares/filestorage.hpp
+  src/middlewares/filestorage.cpp
+  src/master.hpp
+  src/master.cpp
 )
+
+include_directories("${PROJECT_SOURCE_DIR}")
 
 #add_subdirectory(src)
 # Create the run game executable
@@ -50,4 +57,62 @@ target_link_libraries(Run TinyCDN_Base stdc++fs)
 # add_executable(Test ${ENGINE_TEST_SOURCES})
 # target_link_libraries(Test TinyCDN_Base Catch)
 # add_test(NAME TestBase COMMAND Test)
+
+
+#set(DOCS_OUTPUT_DIR "docs/")
+
+#set(CLDOC "/usr/local/bin/cldoc" CACHE STRING "User specified '/path/to/cldoc'")
+#if(CLDOC STREQUAL "")
+#        find_program(CLDOC cldoc)
+#elseif(NOT EXISTS ${CLDOC})
+#        message(FATAL_ERROR "CLDOC was set to '${CLDOC}' but does not exist")
+#endif()
+
+#if(NOT DOCS_OUTPUT_DIR)
+#        set(DOCS_OUTPUT_DIR "gendocs" CACHE STRING "Generated documentation output directory" FORCE)
+#endif()
+
+#if(NOT DOCS_DIR)
+#        set(DOCS_DIR "" CACHE STRING "Location of external documentation files to be merged in" FORCE)
+#endif()
+
+#if(NOT ${CLDOC} STREQUAL "CLDOC-NOTFOUND")
+#  if(NOT ${DOCS_DIR} STREQUAL "")
+#        set(CLDOC_MERGE "--merge ${DOCS_DIR}")
+#  else()
+#        set(CLDOC_MERGE "")
+#  endif()
+
+#  add_custom_target(docs COMMAND
+#    ${CLDOC} generate -I${PROJECT_SOURCE_DIR} std=c++17
+
+#    --
+#    ${CLDOC_MERGE}
+#    --output ${DOCS_OUTPUT_DIR}
+#    ${HEADERS}
+#    ${SOURCES}
+#    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} VERBATIM
+#  )
+
+#  set_target_properties(docs PROPERTIES
+#    EXCLUDE_FROM_ALL 1
+#    EXCLUDE_FROM_DEFAULT_BUILD 1
+#  )
+
+#  add_custom_target(serve_docs COMMAND
+#    ${CLDOC} serve -- ${DOCS_OUTPUT_DIR}
+#    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+#  )
+
+#  set_target_properties(docs PROPERTIES
+#    EXCLUDE_FROM_ALL 1
+#    EXCLUDE_FROM_DEFAULT_BUILD 1
+#  )
+
+#  add_dependencies(serve_docs docs)
+#else()
+#  message(STATUS
+#    "Documentation will not be generated"
+#  )
+#endif()
 

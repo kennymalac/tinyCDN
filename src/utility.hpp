@@ -2,9 +2,22 @@
 
 #include <vector>
 
-#include "src/middlewares/exceptions.hpp"
+#include "middlewares/exceptions.hpp"
 
 namespace TinyCDN {
+
+constexpr std::size_t operator""_kB(unsigned long long v) {
+  return 1024u * v;
+}
+
+constexpr std::size_t operator""_mB(unsigned long long v) {
+  return 1048576u * v;
+}
+
+constexpr std::size_t operator""_gB(unsigned long long v) {
+  return 1073741824 * v;
+}
+
 struct Size {
   // Immutable
   const uintmax_t size;
@@ -30,6 +43,10 @@ struct Size {
   }
 };
 
+/*
+ * Treats a comma'd string value as a container of string-convertible values
+ * Overload for specific types to create k-tuples from stored text
+*/
 template <typename t>
 std::string asCSV(t container);
 
