@@ -173,13 +173,14 @@ std::shared_ptr<StoredFile> FileBucket::createStoredFile(fs::path tmpfile, Size 
   return temporaryFile;
 }
 
-//std::vector<std::unique_ptr<FileStorage::HaystackBlock>> FileBucket::getFile(std::size_t position) {
-//  std::vector<std::unique_ptr<FileStorage::HaystackBlock>> test;
-//  for (auto block : storage->cseek(position)) {
-//    // Get block value from future, push to vector
-//    test.push_back(block.get());
-//  }
-//}
+
+// TODO figure out return type
+auto FileBucket::getFile(std::size_t position, std::size_t fileSize) {
+  std::vector<std::unique_ptr<FileStorage::HaystackBlock>> test;
+  for (auto it = this->storage->read(position); it <= it.end(position + fileSize.size); ++it) {
+
+  }
+}
 
 // auto location = bucket.uid / name;
 // if (fs::exists(location)) {
