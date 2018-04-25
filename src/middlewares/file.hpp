@@ -39,9 +39,13 @@ namespace TinyCDN::Middleware::File {
 // };
 
 
-// An individual entry in the File Bucket REGISTRY file
 
 //template <typename tokenType>
+/*!
+ * \brief The FileBucket represents a generic persistent data store for any file data and has a fixed size.
+ * A FileBucket is persisted through serialization of its fields copied into the FileBucketRegistry's REGISTRY file.
+ * It can be configured to only accept a certain set of allowable filetypes as part of its contents.
+ */
 struct FileBucket {
   // const size;
   // TypedFileKeystore retrieveKeystore();
@@ -61,6 +65,7 @@ struct FileBucket {
   // NOTE stringly typed for now
   std::vector<std::string> types;
 
+  //! All currently open file handles. TODO throw this out the window
   std::vector<std::shared_ptr<StoredFile>> openFiles;
 
   // distributionPolicy
@@ -85,14 +90,17 @@ struct FileBucket {
 
 };
 
+//! A container representing a FileBucket's persistent state as stored in the FileBucketRegistry
 struct FileBucketRegistryItem {
+  //! The FileBucket serialized as a CSV
   std::string contents = "";
 
+  //! Convenience helper method for generating fieldName=
   inline std::string assignmentToken(std::string fieldName) {
     return fieldName + "=";
   }
 
-  // std::
+  //! Takes a mapping of pre-serialized FileBucket fields and converts it into a single CSV which can be saved to the REGISTRY
   inline void replaceFieldValues(std::unordered_map<std::string, std::string> fields) {
     // ;id=ID;location=PATH;size=SIZE;types=Audio,Video,Image;
     for (std::pair<std::string, std::string> pair : fields) {
@@ -107,12 +115,22 @@ struct FileBucketRegistryItem {
   inline FileBucketRegistryItem(std::string contents) : contents(contents) {}
 };
 
+/*!
+ * \brief A container that represents all FileBucket persistent state in a single REGISTRY file comprised of FileBucket CSVs.
+ * A REGISTRY file lives in the same directory as the FileBucket. A FileBucketRegistry is merely the the record of said REGISTRY being loaded into memory.
+ * The FileBucket creation or modification procedure should trigger an update to FileBucketRegistry to persist its creation/modification into the CDN's shared state.
+ * Eventually the REGISTRY will have to live in several files due to the fact that this data structure is inefficient for a large amount of FileBucket creations, modifications, and deletions.
+ */
 struct FileBucketRegistry {
   fs::path location;
   std::string registryFileName;
   Size defaultBucketSize{10000000000000000};
   std::vector<std::unique_ptr<FileBucketRegistryItem>> registry;
 
+  /*!
+   * \brief registerItem converts an assumingly newly-created FileBucket and appends its configuration as a FileBucketRegistryItem into REGISTRY
+   * \param fb a FileBucket instance
+   */
   inline void registerItem(std::unique_ptr<FileBucket>& fb) {
     std::unordered_map<std::string, std::string> input = {
       {"location", static_cast<std::string>(fb->location)},
@@ -130,12 +148,14 @@ struct FileBucketRegistry {
     this->registry.push_back(std::move(item));
   }
 
+  //!
   auto loadRegistry();
 
   FileBucketRegistry(fs::path location, std::string registryFileName)
     : location(location), registryFileName(registryFileName) {}
 };
 
+//! A FileBucket CSV gets converted into this POD and subsequently this data is assigned to a FileBucket class instance
 struct FileBucketParams {
   int id;
   uintmax_t assignedSize;
@@ -143,6 +163,7 @@ struct FileBucketParams {
   // NOTE stringly typed for now
   std::vector<std::string> types;
 };
+
 
 struct FileBucketRegistryItemConverter {
   std::shared_ptr<FileBucketRegistry> registry;

@@ -43,12 +43,15 @@ struct Size {
   }
 };
 
-/*
- * Treats a comma'd string value as a container of string-convertible values
+/*! Takes a container and converts to a comma-separated string
+ * Treats a comma'd string value as a container of string-convertible values.
  * Overload for specific types to create k-tuples from stored text
-*/
+ * This is used to convert structures into a format that can be created at run-time by reading from a file.
+ */
 template <typename t>
 std::string asCSV(t container);
 
+/*! Takes a comma-separated string and outputs a vector of the string's values
+ */
 std::vector<std::string> fromCSV(std::string csv);
 }
