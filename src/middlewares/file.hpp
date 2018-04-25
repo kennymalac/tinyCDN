@@ -51,24 +51,28 @@ struct FileBucket {
   // TypedFileKeystore retrieveKeystore();
   // FileContainer<FileType>& retrieveFile();
   // void stFile(tokenType key, FileContainer<FileType>& file);
-  //
-  // FileBucket(size )
-  // copy
 
   // TODO gensym
+  //! The "unique" id
   int id;
+  //! The maximum Size allotted for storage
   Size size;
+  //! How much has been allocated already
   Size allocatedSize;
   std::shared_ptr<FileBucketRegistry> registry;
+  //! A data stucture that provides methods to retrieve, modify, and delete files
   std::unique_ptr<FileStorage::Haystack> storage;
+  //! The location of where this FileBucket's storage is present
   fs::path location;
-  // NOTE stringly typed for now
+  //! Currently a stringly-typed set of categories of allowable content (i.e. Audio, Video, etc.)
   std::vector<std::string> types;
 
   //! All currently open file handles. TODO throw this out the window
   std::vector<std::shared_ptr<StoredFile>> openFiles;
 
   // distributionPolicy
+
+  //! Helper method for deducing a file size
   auto inline assignStoredFileSize(StoredFile newContentFile) {
     std::ifstream f;
     f.open(newContentFile.location, std::ios_base::binary | std::ios_base::in);
@@ -164,21 +168,25 @@ struct FileBucketParams {
   std::vector<std::string> types;
 };
 
-
+//! Converts a FileBucketParams into a FileBucketRegistryItem
 struct FileBucketRegistryItemConverter {
   std::shared_ptr<FileBucketRegistry> registry;
   std::unique_ptr<FileBucketParams> params;
 
-  auto convertInput(std::string input) {
+  //! Simply takes a string and deduces a FileBucketRegistryItem
+  inline auto convertInput(std::string input) {
     // TODO sanitize the input
 
     return std::make_unique<FileBucketRegistryItem>(input);
   }
 
+  //! Takes a FileBucket "field" (location, id, allocatedSize, or types) and assigns it to its deduced conversion value
   auto convertField(std::string field, std::string value);
 
+  //! Creates a FileBucket instance by taking params and creating a FileBucket instance from it
   auto convertToValue();
 
+  //! Resets the converter by emptying the current FileBucketParams
   inline void reset() {
     params = std::make_unique<FileBucketParams>();
   }
@@ -191,7 +199,7 @@ struct FileUploadingSession {
   std::tuple<int, std::string> obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket);
   // StatusField
   auto uploadFile (std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
-  // Resides in memory as "active" public buckets
+  //! "active" public FileBuckets that reside in memory until full
   std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
 };
 
@@ -215,7 +223,7 @@ struct FileHostingSession {
   }
 };
 
-
+//! Creates FileBuckets for the FileBucketRegistry. NOTE: Possibly unnecessary
 struct FileBucketAllocator {
   std::shared_ptr<FileBucketRegistry> registry;
   std::unique_ptr<FileBucket> findOrCreate(

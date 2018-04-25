@@ -263,6 +263,7 @@ auto FileBucketRegistry::loadRegistry() {
       converter->convertField(field, value);
     }
 
+    // TODO use return value
     auto persistedBucket = converter->convertToValue();
     converter->reset();
   }
