@@ -13,7 +13,7 @@ namespace fs = std::experimental::filesystem;
 
 #include "file.hpp"
 #include "exceptions.hpp"
-#include "filestorage.hpp"
+#include "FileStorage/filesystem.hpp"
 
 namespace TinyCDN::Middleware::File {
 auto FileUploadingSession::uploadFile(std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned) {
@@ -64,7 +64,7 @@ std::tuple<int, std::string> FileUploadingSession::obtainStoredFileUpload(fs::pa
   //    auto ks = assignedBucket->retrieveProperKeystore();
   //    auto key = ks->generateKey();
 
-  auto storedFile = assignedBucket->createStoredFile(temporaryLocation, fileSize, true);
+  auto storedFile = assignedBucket->storage->createStoredFile(temporaryLocation, fileSize, true);
 
   // Copy id and throw away unique_ptr
   auto const fbId = assignedBucket->id;
@@ -112,6 +112,7 @@ std::unique_ptr<FileBucket> FileBucketAllocator::findOrCreate(
   // }
 };
 
+// template <typename StorageBackend>
 std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
     bool copyable,
     bool owned,
@@ -136,7 +137,7 @@ std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
     fs::create_directory(location / fs::path(t));
   }
   bucket->location = location;
-  bucket->storage = std::make_unique<FileStorage::Haystack>(bucket->allocatedSize, bucket->location, false);
+  bucket->storage = std::make_unique<FileStorage::FilesystemStorage>(bucket->allocatedSize, bucket->location, false);
 
   // Save file bucket information to REGISTRY
   registry->registerItem(bucket);
@@ -158,7 +159,7 @@ FileBucket::FileBucket (int id, Size allocatedSize, std::vector<std::string> typ
   auto availableSpace = fs::space(registry->location).available;
 
   if (availableSpace < size.size) {
-    throw FileBucketException(*this, 0);
+    throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
   }
 }
 
@@ -166,21 +167,16 @@ FileBucket::FileBucket (int id, Size allocatedSize, std::vector<std::string> typ
 //  // Remove all symlinks to this bucket from MANIFEST.in}
 //}
 
-std::shared_ptr<StoredFile> FileBucket::createStoredFile(fs::path tmpfile, Size fileSize, bool temporary) {
-  // tmpfile is the uploaded file stored in /tmp/
-  auto temporaryFile = std::make_shared<StoredFile>(location, fileSize, temporary);
-  openFiles.push_back(temporaryFile);
-  return temporaryFile;
-}
+
 
 
 // TODO figure out return type
-auto FileBucket::getFile(std::size_t position, std::size_t fileSize) {
-  std::vector<std::unique_ptr<FileStorage::HaystackBlock>> test;
-  for (auto it = this->storage->read(position); it <= it.end(position + fileSize.size); ++it) {
+//auto FileBucket::getFile(std::size_t position, std::size_t fileSize) {
+//  std::vector<std::unique_ptr<FileStorage::HaystackBlock>> test;
+//  for (auto it = this->storage->read(position); it <= it.end(position + fileSize.size); ++it) {
 
-  }
-}
+//  }
+//}
 
 // auto location = bucket.uid / name;
 // if (fs::exists(location)) {
@@ -228,7 +224,7 @@ auto FileBucketRegistryItemConverter::convertToValue() {
         params->types,
         this->registry);
 
-  fb->storage = std::make_unique<FileStorage::Haystack>(fb->allocatedSize, fb->location, false);
+  fb->storage = std::make_unique<FileStorage::FilesystemStorage>(fb->allocatedSize, fb->location, false);
 
   return fb;
 }

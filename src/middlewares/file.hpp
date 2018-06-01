@@ -10,8 +10,7 @@
 #include <variant>
 
 #include "../utility.hpp"
-#include "../storedfile.h"
-#include "filestorage.hpp"
+#include "FileStorage/filesystem.hpp"
 
 namespace fs = std::experimental::filesystem;
 
@@ -46,6 +45,7 @@ namespace TinyCDN::Middleware::File {
  * A FileBucket is persisted through serialization of its fields copied into the FileBucketRegistry's REGISTRY file.
  * It can be configured to only accept a certain set of allowable filetypes as part of its contents.
  */
+// template <typename StorageBackend>
 struct FileBucket {
   // const size;
   // TypedFileKeystore retrieveKeystore();
@@ -60,32 +60,14 @@ struct FileBucket {
   //! How much has been allocated already
   Size allocatedSize;
   std::shared_ptr<FileBucketRegistry> registry;
-  //! A data stucture that provides methods to retrieve, modify, and delete files
-  std::unique_ptr<FileStorage::Haystack> storage;
+  //! A file storage driver that provides methods to retrieve, modify, and delete files
+  std::unique_ptr<FileStorage::FilesystemStorage> storage;
   //! The location of where this FileBucket's storage is present
   fs::path location;
   //! Currently a stringly-typed set of categories of allowable content (i.e. Audio, Video, etc.)
   std::vector<std::string> types;
 
-  //! All currently open file handles. TODO throw this out the window
-  std::vector<std::shared_ptr<StoredFile>> openFiles;
-
   // distributionPolicy
-
-  //! Helper method for deducing a file size
-  auto inline assignStoredFileSize(StoredFile newContentFile) {
-    std::ifstream f;
-    f.open(newContentFile.location, std::ios_base::binary | std::ios_base::in);
-    if (!f.good() || f.eof() || !f.is_open()) {
-      throw FileBucketException(*this, 2);
-    }
-    f.seekg(0, std::ios_base::beg);
-    std::ifstream::pos_type begin_pos = f.tellg();
-    f.seekg(0, std::ios_base::end);
-    return Size{static_cast<uintmax_t>(f.tellg() - begin_pos)};
-  }
-
-  std::shared_ptr<StoredFile> createStoredFile(fs::path tmpfile, Size fileSize, bool temporary);
 
   FileBucket(int id, Size allocatedSize, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry);
   inline FileBucket (int id, Size allocatedSize, fs::path location, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry)
@@ -128,7 +110,7 @@ struct FileBucketRegistryItem {
 struct FileBucketRegistry {
   fs::path location;
   std::string registryFileName;
-  Size defaultBucketSize{10000000000000000};
+  Size defaultBucketSize{1_gB};
   std::vector<std::unique_ptr<FileBucketRegistryItem>> registry;
 
   /*!

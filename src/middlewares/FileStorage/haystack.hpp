@@ -9,7 +9,9 @@
 #include <future>
 #include <experimental/filesystem>
 
-#include "../utility.hpp"
+#include "storage.hpp"
+
+#include "../../utility.hpp"
 
 namespace fs = std::experimental::filesystem;
 
@@ -23,7 +25,7 @@ namespace TinyCDN::Middleware::FileStorage {
 struct HaystackBlock {
   //! The size of the buffer this block contains
   const Size size;
-  //! Contents of the block
+  //! Contents of the block (TODO should be static size)
   std::string_view buffer;
 
   HaystackBlock() : size(256_kB) {}
@@ -156,17 +158,17 @@ public:
 /*!
  * \brief The Haystack, a stucture of a fixed Size that allows storing multiple files within the same file.
  */
-struct Haystack
-{
+struct Haystack : FileStorage {
 public:
   // static size
-  Size allocatedSize;
-  fs::path location;
   std::ifstream inputHandle;
   std::ofstream outputHandle;
 
   const bool preallocated = false;
 
+  // NOTE: The haystack should have a 16-byte(?) META information block
+  // Actually this should be in a separate file
+  // It should hold the last unique id
   void allocate();
 
 
@@ -201,7 +203,7 @@ public:
   Haystack(const Haystack&);
 
   inline Haystack(Size allocatedSize, fs::path location, bool preallocated)
-    : allocatedSize(allocatedSize), location(location), preallocated(preallocated) {
+    : FileStorage(allocatedSize, location, preallocated) {
     if (!preallocated) {
       allocate();
   }

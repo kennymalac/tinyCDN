@@ -27,12 +27,17 @@ set(SOURCES
   src/utility.hpp
   src/utility.cpp
   src/middlewares/file.hpp
-  src/storedfile.h
-  src/storedfile.cpp
+  src/middlewares/FileStorage/storedfile.hpp
+  src/middlewares/FileStorage/storedfile.cpp
   src/middlewares/exceptions.hpp
+  src/middlewares/exceptions.cpp
   src/middlewares/file.cpp
-  src/middlewares/filestorage.hpp
-  src/middlewares/filestorage.cpp
+  src/middlewares/FileStorage/storage.hpp
+  src/middlewares/FileStorage/storage.cpp
+  src/middlewares/FileStorage/haystack.hpp
+  src/middlewares/FileStorage/haystack.cpp
+  src/middlewares/FileStorage/filesystem.hpp
+  src/middlewares/FileStorage/filesystem.cpp
   src/master.hpp
   src/master.cpp
 )

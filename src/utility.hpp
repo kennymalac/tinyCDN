@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vector>
-
-#include "middlewares/exceptions.hpp"
+#include <string>
+#include <cstdint>
 
 namespace TinyCDN {
 

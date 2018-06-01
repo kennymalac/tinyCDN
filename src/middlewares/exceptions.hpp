@@ -1,27 +1,43 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <exception>
 #include <stdexcept>
 #include <sstream>
 #include <string>
 
+#include "FileStorage/storedfile.hpp"
+
 namespace TinyCDN::Middleware::File {
 struct FileBucket;
 struct FileBucketRegistry;
 
-class FileBucketException : public std::runtime_error {
+namespace Storage = TinyCDN::Middleware::FileStorage;
+
+void logStoredFile(const std::optional<Storage::StoredFile>& maybeStoredFile, std::ostream& errorLog) {
+  auto const file = maybeStoredFile.value();
+  errorLog << "id: " << file.id.value_or(0) << "\n";
+  errorLog << "location: " << file.location << "\n";
+  errorLog << "temporary: " << file.temporary << "\n";
+  errorLog << "size: " << file.size.size << "\n";
+}
+
+class FileStorageException : public std::runtime_error {
 public:
 
-  FileBucketException(const FileBucket &fb, int code);
+  FileStorageException(int code, std::string explanation, const std::optional<Storage::StoredFile> storedFile);
 
-  virtual const char* what() const throw() {
+  virtual const char* what() {
     errorResponse.str("");
 
     std::string error;
+    std::ostringstream errorLog;
+
     switch (code) {
     case 0:
-      error = "filebucket storage has ran out of space";
+      errorLog << "invalid StoredFile location or broken file: \n";
+      logStoredFile(storedFile, errorLog);
       break;
     case 1:
       error = "invalid persisted filename";
@@ -31,13 +47,46 @@ public:
       break;
     }
 
-    errorResponse << std::runtime_error::what() << ": " << error;
+    errorResponse << std::runtime_error::what() << ": " << errorLog.str() << "\n";
     return errorResponse.str().c_str();
   }
 
 private:
   int code;
-  FileBucket& filebucket;
+  const std::optional<Storage::StoredFile> storedFile;
+
+  static std::ostringstream errorResponse;
+};
+
+class FileBucketException : public std::runtime_error {
+public:
+
+  FileBucketException(const FileBucket &fb, int code, std::string explanation);
+
+  virtual const char* what() {
+    errorResponse.str("");
+
+    std::ostringstream errorLog;
+
+    switch (code) {
+    case 0:
+      errorLog << "FileBucket ran out of space";
+      break;
+    case 1:
+      errorLog << "invalid persisted filename";
+      break;
+    default:
+      errorLog << "";
+      break;
+    }
+
+    errorResponse << std::runtime_error::what() << ": " << errorLog.str() << "\n";
+    return errorResponse.str().c_str();
+  }
+
+private:
+  int code;
+  const FileBucket& fileBucket;
 
   static std::ostringstream errorResponse;
 };
@@ -45,9 +94,9 @@ private:
 class FileBucketRegistryException : public std::runtime_error {
 public:
 
-  FileBucketRegistryException(FileBucketRegistry &fbr, int code, std::string explanation);
+  FileBucketRegistryException(const FileBucketRegistry &fbr, int code, std::string explanation);
 
-  virtual const char* what() const throw() {
+  virtual const char* what() {
     errorResponse.str("");
 
     std::string error;
@@ -60,14 +109,13 @@ public:
       break;
     }
 
-    errorResponse << std::runtime_error::what() << ": " << error << " " << explanation;
+    errorResponse << std::runtime_error::what() << ": " << error << "\n";
     return errorResponse.str().c_str();
   }
 
 private:
   int code;
-  std::string explanation;
-  FileBucketRegistry& registry;
+  const FileBucketRegistry& registry;
 
   static std::ostringstream errorResponse;
 };
