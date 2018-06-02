@@ -70,8 +70,8 @@ struct FileBucket {
   // distributionPolicy
 
   FileBucket(int id, Size allocatedSize, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry);
-  inline FileBucket (int id, Size allocatedSize, fs::path location, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry)
-    : id(id), allocatedSize(allocatedSize), location(location), size(Size{0}), types(types), registry(registry)
+  inline FileBucket (int id, Size size, fs::path location, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry)
+    : id(id), size(size), allocatedSize(Size{0}), registry(registry), location(location), types(types)
   {}
 
 };
@@ -110,7 +110,7 @@ struct FileBucketRegistryItem {
 struct FileBucketRegistry {
   fs::path location;
   std::string registryFileName;
-  Size defaultBucketSize{1_gB};
+  Size defaultBucketSize{2_mB};
   std::vector<std::unique_ptr<FileBucketRegistryItem>> registry;
 
   /*!
@@ -177,12 +177,17 @@ struct FileBucketRegistryItemConverter {
 // typedef FileBucket<BLAKEKey> BLAKEBucket;
 
 struct FileUploadingSession {
-  std::shared_ptr<FileBucketRegistry>& registry;
+  std::shared_ptr<FileBucketRegistry> registry;
   std::tuple<int, std::string> obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket);
   // StatusField
-  auto uploadFile (std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
+  std::tuple<int, std::string> uploadFile (std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
   //! "active" public FileBuckets that reside in memory until full
   std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
+
+  inline FileUploadingSession(
+      std::shared_ptr<FileBucketRegistry> registry)
+    : registry(registry)
+  {}
 };
 
 struct FileHostingSession {

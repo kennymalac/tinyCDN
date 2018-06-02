@@ -5,10 +5,10 @@
 
 namespace TinyCDN::Middleware::FileStorage {
 
-struct uuid;
 class FilesystemStorage : public FileStorage {
 private:
   std::ofstream META;
+  static const fs::path linkDirName;
 
 protected:
   fileId getUniqueFileId();

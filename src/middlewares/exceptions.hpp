@@ -15,7 +15,7 @@ struct FileBucketRegistry;
 
 namespace Storage = TinyCDN::Middleware::FileStorage;
 
-void logStoredFile(const std::optional<Storage::StoredFile>& maybeStoredFile, std::ostream& errorLog) {
+inline void logStoredFile(const std::optional<Storage::StoredFile>& maybeStoredFile, std::ostream& errorLog) {
   auto const file = maybeStoredFile.value();
   errorLog << "id: " << file.id.value_or(0) << "\n";
   errorLog << "location: " << file.location << "\n";
@@ -29,10 +29,9 @@ public:
   FileStorageException(int code, std::string explanation, const std::optional<Storage::StoredFile> storedFile);
 
   virtual const char* what() {
-    errorResponse.str("");
-
-    std::string error;
     std::ostringstream errorLog;
+
+    errorLog << std::runtime_error::what() << ": ";
 
     switch (code) {
     case 0:
@@ -40,22 +39,19 @@ public:
       logStoredFile(storedFile, errorLog);
       break;
     case 1:
-      error = "invalid persisted filename";
+      errorLog << "invalid persisted filename";
       break;
     default:
-      error = "";
+      errorLog << "";
       break;
     }
 
-    errorResponse << std::runtime_error::what() << ": " << errorLog.str() << "\n";
-    return errorResponse.str().c_str();
+    return errorLog.str().c_str();
   }
 
 private:
   int code;
   const std::optional<Storage::StoredFile> storedFile;
-
-  static std::ostringstream errorResponse;
 };
 
 class FileBucketException : public std::runtime_error {
@@ -64,9 +60,9 @@ public:
   FileBucketException(const FileBucket &fb, int code, std::string explanation);
 
   virtual const char* what() {
-    errorResponse.str("");
-
     std::ostringstream errorLog;
+
+    errorLog << std::runtime_error::what() << ": ";
 
     switch (code) {
     case 0:
@@ -80,15 +76,12 @@ public:
       break;
     }
 
-    errorResponse << std::runtime_error::what() << ": " << errorLog.str() << "\n";
-    return errorResponse.str().c_str();
+    return errorLog.str().c_str();
   }
 
 private:
   int code;
   const FileBucket& fileBucket;
-
-  static std::ostringstream errorResponse;
 };
 
 class FileBucketRegistryException : public std::runtime_error {
@@ -97,26 +90,24 @@ public:
   FileBucketRegistryException(const FileBucketRegistry &fbr, int code, std::string explanation);
 
   virtual const char* what() {
-    errorResponse.str("");
+    std::ostringstream errorLog;
 
-    std::string error;
+    errorLog << std::runtime_error::what() << ": ";
+
     switch (code) {
     case 0:
-      error = "loading registry file failed!";
+      errorLog << "loading registry file failed!";
       break;
     default:
-      error = "";
+      errorLog << "";
       break;
     }
 
-    errorResponse << std::runtime_error::what() << ": " << error << "\n";
-    return errorResponse.str().c_str();
+    return errorLog.str().c_str();
   }
 
 private:
   int code;
   const FileBucketRegistry& registry;
-
-  static std::ostringstream errorResponse;
 };
 }

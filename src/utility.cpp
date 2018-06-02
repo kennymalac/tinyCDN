@@ -7,17 +7,6 @@
 
 namespace TinyCDN {
 
-template <typename t>
-std::string asCSV(t container) {
-  std::string csv;
-  for (auto elem : container) {
-    // TODO don't cast here, use a "statusfield"
-    csv.append(static_cast<std::string>(elem));
-    csv.append(",");
-  }
-  return csv;
-}
-
 std::vector<std::string> fromCSV(std::string csv) {
   std::vector<std::string> values;
 

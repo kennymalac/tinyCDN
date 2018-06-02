@@ -16,7 +16,14 @@ namespace fs = std::experimental::filesystem;
 #include "FileStorage/filesystem.hpp"
 
 namespace TinyCDN::Middleware::File {
-auto FileUploadingSession::uploadFile(std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned) {
+auto FileUploadingSession::uploadFile(
+    std::string temporaryLocation,
+    Size fileSize,
+    std::string contentType,
+    std::string fileType,
+    std::vector<std::string> tags,
+    bool wantsOwned)
+-> std::tuple<int, std::string> {
 
   // fileBucket bucket;
   // this->assignBucket();
@@ -49,8 +56,8 @@ auto FileUploadingSession::uploadFile(std::string temporaryLocation, Size fileSi
         auto assignedBucket = allocator.findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags);
         return this->obtainStoredFileUpload(temporaryLocation, fileSize, std::move(assignedBucket));
       }
-      catch (FileBucketException) {
-
+      catch (FileBucketException e) {
+        std::cout << e.what();
       }
     }
     else {
@@ -65,6 +72,8 @@ std::tuple<int, std::string> FileUploadingSession::obtainStoredFileUpload(fs::pa
   //    auto key = ks->generateKey();
 
   auto storedFile = assignedBucket->storage->createStoredFile(temporaryLocation, fileSize, true);
+
+  storedFile = assignedBucket->storage->add(std::move(storedFile));
 
   // Copy id and throw away unique_ptr
   auto const fbId = assignedBucket->id;
@@ -151,8 +160,8 @@ std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
 }
 
 // TODO constructor for FileBucket that takes in existing location???
-FileBucket::FileBucket (int id, Size allocatedSize, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry)
-  : id(id), allocatedSize(allocatedSize), size(Size{0}), types(types), registry(registry)
+FileBucket::FileBucket (int id, Size size, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry)
+  : id(id), size(size), allocatedSize(Size{0}), registry(registry), types(types)
 {
 
   // Make sure there is enough space for this size

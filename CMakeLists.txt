@@ -7,6 +7,7 @@ set(CMAKE_CXX_COMPILER g++-7)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_BUILD_TYPE Debug)
 
 # Cmake 3.8 isn't out yet so we need to require c++ 17 manually
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
@@ -42,6 +43,10 @@ set(SOURCES
   src/master.cpp
 )
 
+set(TEST_SOURCES
+  src/test/fileupload.cpp
+)
+
 include_directories("${PROJECT_SOURCE_DIR}")
 
 #add_subdirectory(src)
@@ -54,14 +59,15 @@ add_executable(Run src/main.cpp)
 target_link_libraries(Run TinyCDN_Base stdc++fs)
 
 # TODO make testing an option, see https://github.com/ComicSansMS/GhulbusBase/blob/master/CMakeLists.txt
-# enable_testing()
-# add_library(Catch INTERFACE)
-# target_include_directories(Catch INTERFACE ${BASE_TEST_DIR}/include)
+enable_testing()
+add_library(Catch INTERFACE)
+
+target_include_directories(Catch INTERFACE ${BASE_TEST_DIR}/include)
 
 # Create the testing suite executable
-# add_executable(Test ${ENGINE_TEST_SOURCES})
-# target_link_libraries(Test TinyCDN_Base Catch)
-# add_test(NAME TestBase COMMAND Test)
+add_executable(Test ${TEST_SOURCES})
+target_link_libraries(Test TinyCDN_Base Catch stdc++fs)
+add_test(NAME TestBase COMMAND Test)
 
 
 #set(DOCS_OUTPUT_DIR "docs/")

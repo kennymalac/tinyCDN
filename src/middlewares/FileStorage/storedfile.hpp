@@ -19,6 +19,7 @@ struct StoredFile
   // std::optional<std::pair<std::size_t, std::size_t>> position;
 
   StoredFile(Size size, fs::path location, bool temporary);
+  StoredFile(fs::path location, bool temporary);
 };
 
 }

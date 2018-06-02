@@ -2,8 +2,13 @@
 #include <iostream>
 
 #include "master.hpp"
+//#include "utility.hpp"
+//#include "middlewares/file.hpp"
 
 const std::string version = "0.0.1";
+
+namespace file = TinyCDN::Middleware::File;
+using namespace TinyCDN;
 
 int main() {
 

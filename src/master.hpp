@@ -17,6 +17,9 @@ struct CDNMasterSession {
 };
 
 class CDNMaster {
+// TODO private
+public:
+
   //! The spawned session store which stores current sessions
   std::unique_ptr<CDNMasterSession> session;
 
@@ -26,7 +29,6 @@ class CDNMaster {
     contact name servers
    */
 
-public:
   //! If this CDNMaster was opened from a pre-existing REGISTRY file that was created before running the current program instance
   const bool existing;
 

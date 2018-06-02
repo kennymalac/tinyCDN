@@ -30,7 +30,7 @@ public:
   //! in whatever data format the storage backend uses.
   virtual void allocate() = 0;
   //! Completely removes this storage and all of its contained files
-  virtual void destroy();
+  virtual void destroy() = 0;
 
   virtual std::unique_ptr<StoredFile> lookup(fileId id) = 0;
   virtual std::unique_ptr<StoredFile> add(std::unique_ptr<StoredFile> file) = 0;
@@ -49,7 +49,7 @@ public:
     return Size{static_cast<uintmax_t>(f.tellg() - begin_pos)};
   }
 
-  std::unique_ptr<StoredFile> createStoredFile(fs::path tmpfile, Size fileSize, bool temporary);
+  virtual std::unique_ptr<StoredFile> createStoredFile(fs::path tmpfile, Size fileSize, bool temporary);
 
   FileStorage(Size allocatedSize, fs::path location, bool preallocated);
   virtual ~FileStorage() = 0;

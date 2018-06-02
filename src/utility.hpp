@@ -21,7 +21,7 @@ constexpr std::size_t operator""_gB(unsigned long long v) {
 struct Size {
   // Immutable
   const uintmax_t size;
-  Size(uintmax_t size) : size(size) {}
+  inline Size(uintmax_t size) : size(size) {}
 
   const Size operator+(Size& S2) const {
     return Size{this->size + S2.size};
@@ -49,7 +49,15 @@ struct Size {
  * This is used to convert structures into a format that can be created at run-time by reading from a file.
  */
 template <typename t>
-std::string asCSV(t container);
+inline std::string asCSV(t container) {
+  std::string csv;
+  for (auto elem : container) {
+    // TODO don't cast here, use a "statusfield"
+    csv.append(static_cast<std::string>(elem));
+    csv.append(",");
+  }
+  return csv;
+};
 
 /*! Takes a comma-separated string and outputs a vector of the string's values
  */
