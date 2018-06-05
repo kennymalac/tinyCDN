@@ -51,9 +51,8 @@ auto FileUploadingSession::uploadFile(
 
     if (maybeBucket == currentFileBuckets.end()) {
       // i.e. Audio -> read MANIFEST.in in Public/Audio/
-      FileBucketAllocator allocator{this->registry};
       try {
-        auto assignedBucket = allocator.findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags);
+        auto assignedBucket = registry->findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags);
         return this->obtainStoredFileUpload(temporaryLocation, fileSize, std::move(assignedBucket));
       }
       catch (FileBucketException e) {
@@ -82,14 +81,7 @@ std::tuple<int, std::string> FileUploadingSession::obtainStoredFileUpload(fs::pa
   return {fbId, storedFile->location.string()};
 }
 
-
-FileBucketAllocator::FileBucketAllocator(std::shared_ptr<FileBucketRegistry> registry)
-  : registry(registry)
-{
-
-}
-
-std::unique_ptr<FileBucket> FileBucketAllocator::findOrCreate(
+std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
     bool copyable,
     bool owned,
     Size minimumSize,
@@ -117,12 +109,12 @@ std::unique_ptr<FileBucket> FileBucketAllocator::findOrCreate(
   //    //return FileBucket{}
   //  }
   // else {
-  return this->createBucket(copyable, owned, registry->defaultBucketSize, types, tags);
+  return this->create(true, owned, this->defaultBucketSize, types, tags);
   // }
 };
 
 // template <typename StorageBackend>
-std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
+std::unique_ptr<FileBucket> FileBucketRegistry::create(
     bool copyable,
     bool owned,
     Size size,
@@ -130,12 +122,14 @@ std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
     //    std::string fileType,
     std::vector<std::string> tags) {
 
+  auto const fbId = this->getUniqueFileBucketId();
+
   // Assign semi-permanent location
-  const int id = 100; //gensym()
 
   // Create the bucket, create its required directories, and assign the location
-  auto bucket = std::make_unique<FileBucket>(id, size, types, this->registry);
-  auto location = this->registry->location / fs::path(std::to_string(id));
+  auto bucket = std::make_unique<FileBucket>(size, this->location, types);
+  bucket->id = fbId;
+  auto location = this->location / fs::path(std::to_string(fbId));
   fs::create_directory(location);
   for (auto t : types) {
     // Create directory of symlinks for each mediatype this bucket supports
@@ -149,7 +143,7 @@ std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
   bucket->storage = std::make_unique<FileStorage::FilesystemStorage>(bucket->allocatedSize, bucket->location, false);
 
   // Save file bucket information to REGISTRY
-  registry->registerItem(bucket);
+  this->registerItem(bucket);
   return bucket;
 
   // Create MANIFEST file for content files
@@ -160,12 +154,12 @@ std::unique_ptr<FileBucket> FileBucketAllocator::createBucket(
 }
 
 // TODO constructor for FileBucket that takes in existing location???
-FileBucket::FileBucket (int id, Size size, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry)
-  : id(id), size(size), allocatedSize(Size{0}), registry(registry), types(types)
+FileBucket::FileBucket (Size size, fs::path registryLocation, std::vector<std::string> types)
+  : size(size), allocatedSize(Size{0}), types(types)
 {
 
   // Make sure there is enough space for this size
-  auto availableSpace = fs::space(registry->location).available;
+  auto availableSpace = fs::space(registryLocation).available;
 
   if (availableSpace < size.size) {
     throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
@@ -230,8 +224,7 @@ auto FileBucketRegistryItemConverter::convertToValue() {
         params->id,
         Size{params->assignedSize},
         params->location,
-        params->types,
-        this->registry);
+        params->types);
 
   fb->storage = std::make_unique<FileStorage::FilesystemStorage>(fb->allocatedSize, fb->location, false);
 
@@ -276,5 +269,12 @@ auto FileBucketRegistry::loadRegistry() {
   if (registryFile.bad()) {
     throw FileBucketRegistryException(*this, 0, "Error while loading Registry file");
   }
+}
+Storage::fileId FileBucketRegistry::getUniqueFileBucketId() {
+  auto const id = ++fileBucketUniqueId;
+  // Persist incremented id to META
+  META.seekp(0);
+  META << fileBucketUniqueId;
+  return id;
 }
 }

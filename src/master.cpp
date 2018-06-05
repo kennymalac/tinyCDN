@@ -11,7 +11,7 @@ void CDNMaster::spawnCDN() {
   // return statusfield
 
   // initialize a first-time registry
-  session->registry = std::make_shared<Middleware::File::FileBucketRegistry>(
+  session->registry = std::make_unique<Middleware::File::FileBucketRegistry>(
         fs::current_path(), "REGISTRY");
 
   if (!this->existing) {

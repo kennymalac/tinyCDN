@@ -54,12 +54,11 @@ struct FileBucket {
 
   // TODO gensym
   //! The "unique" id
-  int id;
+  Storage::fileId id;
   //! The maximum Size allotted for storage
   Size size;
   //! How much has been allocated already
   Size allocatedSize;
-  std::shared_ptr<FileBucketRegistry> registry;
   //! A file storage driver that provides methods to retrieve, modify, and delete files
   std::unique_ptr<FileStorage::FilesystemStorage> storage;
   //! The location of where this FileBucket's storage is present
@@ -69,9 +68,9 @@ struct FileBucket {
 
   // distributionPolicy
 
-  FileBucket(int id, Size allocatedSize, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry);
-  inline FileBucket (int id, Size size, fs::path location, std::vector<std::string> types, std::shared_ptr<FileBucketRegistry> registry)
-    : id(id), size(size), allocatedSize(Size{0}), registry(registry), location(location), types(types)
+  FileBucket(Size allocatedSize, fs::path registryLocation, std::vector<std::string> types);
+  inline FileBucket (Storage::fileId id, Size size, fs::path location, std::vector<std::string> types)
+    : id(id), size(size), allocatedSize(Size{0}), location(location), types(types)
   {}
 
 };
@@ -110,6 +109,8 @@ struct FileBucketRegistryItem {
 struct FileBucketRegistry {
   fs::path location;
   std::string registryFileName;
+  std::ofstream META;
+  std::atomic<Storage::fileId> fileBucketUniqueId;
   Size defaultBucketSize{2_mB};
   std::vector<std::unique_ptr<FileBucketRegistryItem>> registry;
 
@@ -134,11 +135,34 @@ struct FileBucketRegistry {
     this->registry.push_back(std::move(item));
   }
 
+  Storage::fileId getUniqueFileBucketId();
   //!
   auto loadRegistry();
 
-  FileBucketRegistry(fs::path location, std::string registryFileName)
-    : location(location), registryFileName(registryFileName) {}
+  std::unique_ptr<FileBucket> findOrCreate(
+      bool copyable,
+      bool owned,
+      Size size,
+      std::vector<std::string> types,
+      //    std::string fileType,
+      std::vector<std::string> tags);
+
+  //! Creates FileBuckets registered with this
+  std::unique_ptr<FileBucket> create(
+      bool copyable,
+      bool owned,
+      Size size,
+      std::vector<std::string> types,
+      //    std::string fileType,
+      std::vector<std::string> tags);
+
+  inline FileBucketRegistry(fs::path location, std::string registryFileName)
+    : location(location), registryFileName(registryFileName) {
+    fileBucketUniqueId = static_cast<Storage::fileId>(0);
+    META = std::ofstream(this->location / "META");
+  }
+
+  FileBucketRegistry(const FileBucketRegistry&) = delete;
 };
 
 //! A FileBucket CSV gets converted into this POD and subsequently this data is assigned to a FileBucket class instance
@@ -152,7 +176,6 @@ struct FileBucketParams {
 
 //! Converts a FileBucketParams into a FileBucketRegistryItem
 struct FileBucketRegistryItemConverter {
-  std::shared_ptr<FileBucketRegistry> registry;
   std::unique_ptr<FileBucketParams> params;
 
   //! Simply takes a string and deduces a FileBucketRegistryItem
@@ -177,7 +200,7 @@ struct FileBucketRegistryItemConverter {
 // typedef FileBucket<BLAKEKey> BLAKEBucket;
 
 struct FileUploadingSession {
-  std::shared_ptr<FileBucketRegistry> registry;
+  std::unique_ptr<FileBucketRegistry>& registry;
   std::tuple<int, std::string> obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket);
   // StatusField
   std::tuple<int, std::string> uploadFile (std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
@@ -185,7 +208,7 @@ struct FileUploadingSession {
   std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
 
   inline FileUploadingSession(
-      std::shared_ptr<FileBucketRegistry> registry)
+      std::unique_ptr<FileBucketRegistry>& registry)
     : registry(registry)
   {}
 };
@@ -210,26 +233,6 @@ struct FileHostingSession {
   }
 };
 
-//! Creates FileBuckets for the FileBucketRegistry. NOTE: Possibly unnecessary
-struct FileBucketAllocator {
-  std::shared_ptr<FileBucketRegistry> registry;
-  std::unique_ptr<FileBucket> findOrCreate(
-      bool copyable,
-      bool owned,
-      Size size,
-      std::vector<std::string> types,
-      //    std::string fileType,
-      std::vector<std::string> tags);
-  std::unique_ptr<FileBucket> createBucket(
-      bool copyable,
-      bool owned,
-      Size size,
-      std::vector<std::string> types,
-      //    std::string fileType,
-      std::vector<std::string> tags);
-
-  FileBucketAllocator(std::shared_ptr<FileBucketRegistry> registry);
-};
 }
 
 // this should be a concept

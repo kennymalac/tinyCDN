@@ -45,6 +45,7 @@ set(SOURCES
 
 set(TEST_SOURCES
   src/test/fileupload.cpp
+  src/test/file.cpp
 )
 
 include_directories("${PROJECT_SOURCE_DIR}")

@@ -1,4 +1,3 @@
-#define CATCH_CONFIG_MAIN
 #include "include/catch.hpp"
 
 #include <experimental/filesystem>
@@ -8,8 +7,6 @@
 #include "src/master.hpp"
 //#include "utility.hpp"
 //#include "middlewares/file.hpp"
-
-const std::string version = "0.0.1";
 
 namespace file = TinyCDN::Middleware::File;
 using namespace TinyCDN;

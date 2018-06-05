@@ -8,9 +8,8 @@ namespace fs = std::experimental::filesystem;
 namespace TinyCDN {
 
 //! Currently only holds a pointer to the FileBucketRegistry which contains information about all initiated FileBuckets.
-//! I'm contemplating making this a unique_ptr.
 struct CDNMasterSession {
-  std::shared_ptr<Middleware::File::FileBucketRegistry> registry;
+  std::unique_ptr<Middleware::File::FileBucketRegistry> registry;
 
   // uploadSessions;
   // hostingSessions;
