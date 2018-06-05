@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.3)
 project(TinyCDN)
+set(PROJECT_VERSION 0.0.1)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
@@ -71,60 +72,19 @@ target_link_libraries(Test TinyCDN_Base Catch stdc++fs)
 add_test(NAME TestBase COMMAND Test)
 
 
-#set(DOCS_OUTPUT_DIR "docs/")
+option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" OFF)
+if(BUILD_DOCUMENTATION)
+    set(DOXYGEN_EXCLUDE_PATTERNS catch.hpp */include/pistache/*)
+    set(DOXYGEN_EXCLUDE_DIR)
+    set(DOXYGEN_OUTPUT_DIRECTORY "./docs")
 
-#set(CLDOC "/usr/local/bin/cldoc" CACHE STRING "User specified '/path/to/cldoc'")
-#if(CLDOC STREQUAL "")
-#        find_program(CLDOC cldoc)
-#elseif(NOT EXISTS ${CLDOC})
-#        message(FATAL_ERROR "CLDOC was set to '${CLDOC}' but does not exist")
-#endif()
+    find_package(Doxygen
+        REQUIRED dot
+        OPTIONAL_COMPONENTS mscgen dia)
 
-#if(NOT DOCS_OUTPUT_DIR)
-#        set(DOCS_OUTPUT_DIR "gendocs" CACHE STRING "Generated documentation output directory" FORCE)
-#endif()
-
-#if(NOT DOCS_DIR)
-#        set(DOCS_DIR "" CACHE STRING "Location of external documentation files to be merged in" FORCE)
-#endif()
-
-#if(NOT ${CLDOC} STREQUAL "CLDOC-NOTFOUND")
-#  if(NOT ${DOCS_DIR} STREQUAL "")
-#        set(CLDOC_MERGE "--merge ${DOCS_DIR}")
-#  else()
-#        set(CLDOC_MERGE "")
-#  endif()
-
-#  add_custom_target(docs COMMAND
-#    ${CLDOC} generate -I${PROJECT_SOURCE_DIR} std=c++17
-
-#    --
-#    ${CLDOC_MERGE}
-#    --output ${DOCS_OUTPUT_DIR}
-#    ${HEADERS}
-#    ${SOURCES}
-#    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} VERBATIM
-#  )
-
-#  set_target_properties(docs PROPERTIES
-#    EXCLUDE_FROM_ALL 1
-#    EXCLUDE_FROM_DEFAULT_BUILD 1
-#  )
-
-#  add_custom_target(serve_docs COMMAND
-#    ${CLDOC} serve -- ${DOCS_OUTPUT_DIR}
-#    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-#  )
-
-#  set_target_properties(docs PROPERTIES
-#    EXCLUDE_FROM_ALL 1
-#    EXCLUDE_FROM_DEFAULT_BUILD 1
-#  )
-
-#  add_dependencies(serve_docs docs)
-#else()
-#  message(STATUS
-#    "Documentation will not be generated"
-#  )
-#endif()
+    doxygen_add_docs(
+        doxygen
+        ${PROJECT_SOURCE_DIR}
+        COMMENT "Generate documentation")
+endif()
 
