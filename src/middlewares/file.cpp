@@ -88,29 +88,38 @@ std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
     std::vector<std::string> types,
     //    std::string fileType,
     std::vector<std::string> tags) {
-  bool bucketExists;
 
   // Introspective sort
-  // TODO
+  // TODO optimize
+  for (auto const& item : registry) {
+    if (item->fileBucket.has_value()) {
+      auto& fb = item->fileBucket.value();
 
-  //  auto& assignedBucket = std::find_if(.begin(), .end(), [contentType, fileType, fileSize](auto const& b) {
-  //      return
-  //      // If this FileBucket has enough free space for this file,
-  //      b.maxSize - b.size > fileSize
-  //      // supports this file's ContentType,
-  //      && std::find(b.contentTypes.begin(), b.contentTypes.end(), contentType) != b.contentTypes.end()
-  //      // and supports this file's FileType.
-  //      && std::find(b.fileTypes.begin(), b.fileTypes.end(), fileType) != b.fileTypes.end()
-  //    });
+//      for (auto t : fb->types) {
+//        std::cout << t << " ";
+//      }
+//      std::cout << "\n";
 
-  bucketExists = false;
+      // If this FileBucket has enough free space for this file,
+      if (fb->size - fb->allocatedSize >= minimumSize) {
+        // supports the specified ContentTypes,
+        auto const notSupportsCtypes = std::any_of(types.cbegin(), types.cend(), [&fb](auto const contentType) {
+          return std::find(fb->types.cbegin(), fb->types.cend(), contentType) == fb->types.end();
+        });
+        std::cout << notSupportsCtypes << "\n";
+        // and supports this file's FileType.
+        // && std::find(b.fileTypes.begin(), b.fileTypes.end(), fileType) != b.fileTypes.end()
+        if (!notSupportsCtypes) {
+          auto _fb = std::move(fb);
+          // We need to make sure the optional isn't storing a nullptr
+          item->fileBucket.reset();
+          return _fb;
+        }
+      }
+    }
+  }
 
-  //  if (bucketExists) {
-  //    //return FileBucket{}
-  //  }
-  // else {
   return this->create(true, owned, this->defaultBucketSize, types, tags);
-  // }
 };
 
 // template <typename StorageBackend>
@@ -131,14 +140,7 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
   bucket->id = fbId;
   auto location = this->location / fs::path(std::to_string(fbId));
   fs::create_directory(location);
-  for (auto t : types) {
-    // Create directory of symlinks for each mediatype this bucket supports
-    // e.g.
-    // "Audio/"
-    // "Video/"
-    // "Image/"
-    fs::create_directory(location / fs::path(t));
-  }
+
   bucket->location = location;
   bucket->storage = std::make_unique<FileStorage::FilesystemStorage>(bucket->allocatedSize, bucket->location, false);
 
@@ -208,44 +210,46 @@ auto FileBucketRegistryItemConverter::convertField(std::string field, std::strin
     params->location = fs::path{value};
   }
   else if (field == "id") {
-    params->id = std::stoi(value);
+    params->id = std::stoul(value);
   }
-  else if (field == "allocatedSize") {
+  else if (field == "size") {
     char* nptr;
-    params->assignedSize = std::strtoumax(value.c_str(), &nptr, 10);
+    params->size = std::strtoumax(value.c_str(), &nptr, 10);
   }
+  // TODO allocatedSize!!
   else if (field == "types") {
     params->types = fromCSV(value);
   }
 }
 
-auto FileBucketRegistryItemConverter::convertToValue() {
-  auto fb = std::make_unique<FileBucket>(
+template <typename T>
+std::unique_ptr<T> FileBucketRegistryItemConverter::convertToValue() {
+  auto item = std::make_unique<T>(
         params->id,
-        Size{params->assignedSize},
+        Size{params->size},
         params->location,
         params->types);
 
-  fb->storage = std::make_unique<FileStorage::FilesystemStorage>(fb->allocatedSize, fb->location, false);
-
-  return fb;
+  return std::move(item);
 }
 
-auto FileBucketRegistry::loadRegistry() {
+void FileBucketRegistry::loadRegistry() {
   std::string line;
   std::ifstream registryFile(this->location / this->registryFileName);
+  std::vector<std::unique_ptr<FileBucket>> fbs;
 
-  if (!registryFile.is_open()) {
+  if (!registryFile.is_open() || registryFile.bad()) {
     throw FileBucketRegistryException(*this, 0, "Registry file could not be opened");
   }
 
-  std::unique_ptr<FileBucketRegistryItemConverter> converter;
+  auto converter = std::make_unique<FileBucketRegistryItemConverter>();
   while (getline(registryFile, line)) {
+    // std::cout << line << "\n";
     auto item = converter->convertInput(line);
 
     // Extract contents of this registry item
     // For each field, try to find the persisted value of that field
-    for (auto field : {"id", "location", "allocatedSize", "types"}) {
+    for (auto field : {"id", "location", "size", "types"}) {
       auto const assignment = item->assignmentToken(field);
       auto const n = item->contents.find(assignment);
       if (n == std::string::npos) {
@@ -256,20 +260,21 @@ auto FileBucketRegistry::loadRegistry() {
         continue;
       }
 
-      const auto value = item->contents.substr(n + assignment.length(), valueEnd);
+      auto const len = n + assignment.length();
+      const auto value = item->contents.substr(len, valueEnd-len);
+      // std::cout << n << " : " << valueEnd << "\n";
+      // std::cout << assignment << " : " << value << "\n";
       // TODO dispatch table...
       converter->convertField(field, value);
     }
 
-    // TODO use return value
-    auto persistedBucket = converter->convertToValue();
+    item->fileBucket = converter->convertToValue<FileBucket>();
+    registry.emplace_back(std::move(item));
+
     converter->reset();
   }
-
-  if (registryFile.bad()) {
-    throw FileBucketRegistryException(*this, 0, "Error while loading Registry file");
-  }
 }
+
 Storage::fileId FileBucketRegistry::getUniqueFileBucketId() {
   auto const id = ++fileBucketUniqueId;
   // Persist incremented id to META

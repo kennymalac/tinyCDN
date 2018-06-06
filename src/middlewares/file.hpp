@@ -80,6 +80,9 @@ struct FileBucketRegistryItem {
   //! The FileBucket serialized as a CSV
   std::string contents = "";
 
+  //! A reference to the registry item's bucket that was resolved from this item's persisted state
+  std::optional<std::unique_ptr<FileBucket>> fileBucket;
+
   //! Convenience helper method for generating fieldName=
   inline std::string assignmentToken(std::string fieldName) {
     return fieldName + "=";
@@ -128,7 +131,7 @@ struct FileBucketRegistry {
     auto item = std::make_unique<FileBucketRegistryItem>(input);
 
     {
-      std::ofstream registryFile(this->location / this->registryFileName);
+      std::ofstream registryFile(this->location / this->registryFileName, std::ios::out | std::ios::app);
       registryFile << item->contents << "\n";
     }
 
@@ -137,7 +140,7 @@ struct FileBucketRegistry {
 
   Storage::fileId getUniqueFileBucketId();
   //!
-  auto loadRegistry();
+  void loadRegistry();
 
   std::unique_ptr<FileBucket> findOrCreate(
       bool copyable,
@@ -167,7 +170,8 @@ struct FileBucketRegistry {
 
 //! A FileBucket CSV gets converted into this POD and subsequently this data is assigned to a FileBucket class instance
 struct FileBucketParams {
-  int id;
+  Storage::fileId id{0};
+  uintmax_t size;
   uintmax_t assignedSize;
   fs::path location;
   // NOTE stringly typed for now
@@ -188,11 +192,16 @@ struct FileBucketRegistryItemConverter {
   //! Takes a FileBucket "field" (location, id, allocatedSize, or types) and assigns it to its deduced conversion value
   auto convertField(std::string field, std::string value);
 
-  //! Creates a FileBucket instance by taking params and creating a FileBucket instance from it
-  auto convertToValue();
+  //! Creates a FileBucket or FileBucketRegistry instance by taking params and creating a FileBucket instance from it
+  template <typename T>
+  std::unique_ptr<T> convertToValue();
 
   //! Resets the converter by emptying the current FileBucketParams
   inline void reset() {
+    params = std::make_unique<FileBucketParams>();
+  }
+
+  inline FileBucketRegistryItemConverter() {
     params = std::make_unique<FileBucketParams>();
   }
 };

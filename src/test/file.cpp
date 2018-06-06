@@ -18,7 +18,13 @@ namespace fs = std::experimental::filesystem;
 using fbInputArgs = std::tuple<bool, bool, Size, std::vector<std::string>, std::vector<std::string>>;
 
 
-SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
+auto static fbArgs = std::vector<fbInputArgs>{
+  std::make_tuple(false, false, Size{1_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test2")}),
+  std::make_tuple(false, false, Size{2_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test2")})
+};
+
+SCENARIO("A new CDN is created") {
+
   GIVEN("a new CDNMaster") {
     CDNMaster master(false);
 
@@ -32,25 +38,23 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
         std::vector<std::unique_ptr<file::FileBucket>> fileBuckets;
 
-        auto addBucket = [&fbRegistry=master.session->registry]
+        auto const& fbRegistry = master.session->registry;
+        // Factory function for adding FileBuckets
+        auto addBucket = [&fbRegistry]
             (auto t, auto t2, auto t3, auto t4, auto t5) {
           return fbRegistry->create(t, t2, t3, t4, t5);
         };
 
-        auto fbArgs = std::vector<fbInputArgs>{
-            std::make_tuple(false, false, Size{1_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test2")}),
-            std::make_tuple(false, false, Size{2_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test2")})
-        };
         for (auto spec : fbArgs) {
           fileBuckets.emplace_back(std::apply(addBucket, spec));
         }
 
         THEN("each FileBucket has an associated FileBucketRegistryItem") {
-          REQUIRE( master.session->registry->registry.size() == fileBuckets.size() );
+          REQUIRE( fbRegistry->registry.size() == fileBuckets.size() );
 
           file::FileBucketRegistryItemConverter converter;
           for (unsigned int i = 0; i < static_cast<unsigned int>(fileBuckets.size()); i++) {
-            auto const registryItem = std::move(master.session->registry->registry[i]);
+            auto const& registryItem = master.session->registry->registry[i];
             auto const clonedItem = converter.convertInput(registryItem->contents);
             REQUIRE( registryItem->contents == clonedItem->contents );
           }
@@ -60,12 +64,16 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
           REQUIRE(fs::is_empty(fs::path{"REGISTRY"}) == false);
 
           std::string line;
-          std::ifstream registryFile(master.session->registry->location);
+          std::ifstream registryFile(fbRegistry->location / fbRegistry->registryFileName);
 
           unsigned int counter = 0;
+          auto const len = fbRegistry->registry.size();
           while (getline(registryFile, line)) {
-            REQUIRE( line == master.session->registry->registry[counter++]->contents );
+            // NOTE: order is backwards for registry because it prepends, not appends
+            REQUIRE( line == fbRegistry->registry[counter++]->contents );
           }
+
+          REQUIRE( counter == fbArgs.size() );
         }
 
         // Tear down filebuckets
@@ -73,7 +81,35 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
           fb->storage->destroy();
         }
       }
+    }
+  }
+};
 
+SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
+
+  GIVEN("a persisted CDNMaster with persisted buckets") {
+    CDNMaster master(true);
+
+    WHEN("the master is spawned") {
+      master.spawnCDN();
+      THEN("The registry is initialized and it loads its FileBuckets into memory") {
+
+        auto &fbRegistry = master.session->registry;
+        auto findBucket = [&fbRegistry]
+            (auto t, auto t2, auto t3, auto t4, auto t5) {
+          return fbRegistry->findOrCreate(t, t2, t3, t4, t5);
+        };
+
+        REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
+
+        for (unsigned int i = 0; i < static_cast<unsigned int>(fbArgs.size()); i++) {
+          auto const fbArg = fbArgs[i];
+          auto const& bucket = std::apply(findBucket, fbArg);
+          auto const& registryItem = fbRegistry->registry[i];
+
+          REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
+        }
+      }
     }
 
     // Tear down

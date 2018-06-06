@@ -17,8 +17,9 @@ fileId FilesystemStorage::getUniqueFileId()
 void FilesystemStorage::allocate()
 {
   fileUniqueId = 0;
-  std::ofstream META(this->location / "META");
   META << fileUniqueId;
+
+  fs::create_directory(this->location / "links");
 }
 
 void FilesystemStorage::destroy()
@@ -65,10 +66,14 @@ FilesystemStorage::~FilesystemStorage() {
 
 FilesystemStorage::FilesystemStorage(Size allocatedSize, fs::path location, bool preallocated)
   : FileStorage(allocatedSize, location, preallocated) {
+  META = std::ofstream(this->location / "META", std::ios::out | std::ios::app);
+
   if (!preallocated) {
     allocate();
   }
-  fs::create_directory(this->location / "links");
+  else {
+    // TODO fileUniqueId = META
+  }
 }
 
 }

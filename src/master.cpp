@@ -18,5 +18,8 @@ void CDNMaster::spawnCDN() {
     std::ofstream registryFile("REGISTRY");
     registryFile << "";
   }
+  else {
+    session->registry->loadRegistry();
+  }
 };
 }
