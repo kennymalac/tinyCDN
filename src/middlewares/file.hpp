@@ -57,8 +57,6 @@ struct FileBucket {
   Storage::fileId id;
   //! The maximum Size allotted for storage
   Size size;
-  //! How much has been allocated already
-  Size allocatedSize;
   //! A file storage driver that provides methods to retrieve, modify, and delete files
   std::unique_ptr<FileStorage::FilesystemStorage> storage;
   //! The location of where this FileBucket's storage is present
@@ -68,7 +66,7 @@ struct FileBucket {
 
   // distributionPolicy
 
-  FileBucket(Size allocatedSize, fs::path registryLocation, std::vector<std::string> types);
+  FileBucket(Size size, fs::path registryLocation, std::vector<std::string> types);
   FileBucket(Storage::fileId id, Size size, fs::path location, std::vector<std::string> types);
 };
 
@@ -185,7 +183,7 @@ struct FileBucketRegistryItemConverter {
     return std::make_unique<FileBucketRegistryItem>(input);
   }
 
-  //! Takes a FileBucket "field" (location, id, allocatedSize, or types) and assigns it to its deduced conversion value
+  //! Takes a FileBucket "field" (location, id, size, or types) and assigns it to its deduced conversion value
   auto convertField(std::string field, std::string value);
 
   //! Creates a FileBucket or FileBucketRegistry instance by taking params and creating a FileBucket instance from it

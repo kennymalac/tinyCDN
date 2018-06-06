@@ -17,15 +17,20 @@ using fileId = uint_fast32_t;
 class FileStorage {
 protected:
   std::atomic<fileId> fileUniqueId;
+  //! How much has been allocated already
   std::unique_ptr<Size> allocatedSize;
   //! Persistence of the fileUniqueId is implementation-specific
   virtual fileId getUniqueFileId() = 0;
 
 public:
-  // static size
+  //! The maximum allowed size
   Size size;
   fs::path location;
   const bool preallocated = false;
+
+  inline Size getAllocatedSize() {
+    return Size{allocatedSize->size};
+  }
 
   //! Storage backends override this method to allocate storage on the disk
   //! in whatever data format the storage backend uses.

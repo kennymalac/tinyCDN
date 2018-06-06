@@ -35,14 +35,14 @@ auto FileUploadingSession::uploadFile(
   else {
     // First remove all full FileBuckets
     std::remove_if(currentFileBuckets.begin(), currentFileBuckets.end(), [](auto const& fb) {
-      return fb->size >= fb->allocatedSize;
+      return fb->size >= fb->storage->getAllocatedSize();
     });
 
     // Check if there is a ready bucket that supports this file
     auto maybeBucket = std::find_if(currentFileBuckets.begin(), currentFileBuckets.end(), [contentType, fileType, fileSize](const auto& b) {
       return
           // If this FileBucket has enough free space for this file,
-          (b->allocatedSize - b->size) > fileSize
+          (b->storage->getAllocatedSize() - b->size) > fileSize
           // supports this file's ContentType,
           && std::find(b->types.begin(), b->types.end(), contentType) != b->types.end();
       // and supports this file's FileType.
@@ -101,7 +101,8 @@ std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
 //      std::cout << "\n";
 
       // If this FileBucket has enough free space for this file,
-      if (fb->size - fb->allocatedSize >= minimumSize) {
+      auto fbSize = fb->storage->getAllocatedSize();
+      if (fb->size - fbSize >= minimumSize) {
         // supports the specified ContentTypes,
         auto const notSupportsCtypes = std::any_of(types.cbegin(), types.cend(), [&fb](auto const contentType) {
           return std::find(fb->types.cbegin(), fb->types.cend(), contentType) == fb->types.end();
@@ -156,7 +157,7 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
 }
 
 FileBucket::FileBucket (Size size, fs::path registryLocation, std::vector<std::string> types)
-  : size(size), allocatedSize(Size{0}), types(types)
+  : size(size), types(types)
 {
 
   // Make sure there is enough space for this size
@@ -168,7 +169,7 @@ FileBucket::FileBucket (Size size, fs::path registryLocation, std::vector<std::s
 }
 
 FileBucket::FileBucket (Storage::fileId id, Size size, fs::path location, std::vector<std::string> types)
-  : id(id), size(size), location(location), allocatedSize(Size{0}), types(types)
+  : id(id), size(size), location(location), types(types)
 {
 
   // Make sure there is enough space for this size

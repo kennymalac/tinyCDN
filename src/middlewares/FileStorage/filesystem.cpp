@@ -70,6 +70,7 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
 
   if (!preallocated) {
     META = std::ofstream(this->location / "META");
+    allocatedSize = std::make_unique<Size>(0);
     allocate();
   }
   else {
