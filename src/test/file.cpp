@@ -120,11 +120,11 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
           REQUIRE( bucket->id == fbIds[i] );
           REQUIRE( bucket->location == (fbRegistry->location / fs::path{std::to_string(fbIds[i])}) );
           REQUIRE( bucket->size.size == fbSizes[i].size );
-          REQUIRE( bucket->storage->getAllocatedSize().size == Size{0_kB}.size );
 
           REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
 
           // Test FileBucket storage
+          REQUIRE( bucket->storage->getAllocatedSize().size == Size{0_kB}.size );
 
           // Tear down filebucket
           bucket->storage->destroy();

@@ -204,9 +204,9 @@ struct FileBucketRegistryItemConverter {
 
 struct FileUploadingSession {
   std::unique_ptr<FileBucketRegistry>& registry;
-  std::tuple<int, std::string> obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket);
+  std::tuple<Storage::fileId, std::string> obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket);
   // StatusField
-  std::tuple<int, std::string> uploadFile (std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
+  std::tuple<Storage::fileId, std::string> uploadFile (std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
   //! "active" public FileBuckets that reside in memory until full
   std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
 

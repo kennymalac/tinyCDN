@@ -31,12 +31,16 @@ void FilesystemStorage::destroy()
 // cdn-website.com/<bucket_id>/<file_id>/file.jpg
 std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
 {
-  return std::make_unique<StoredFile>(
-      fs::read_symlink(this->linkDirName / std::to_string(id)), false);
+  auto stFile = std::make_unique<StoredFile>(
+      fs::read_symlink(this->location / this->linkDirName / std::to_string(id)), false);
+
+  stFile->id = id;
+  return stFile;
 }
 
 std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> file)
 {
+  allocatedSize = std::make_unique<Size>(allocatedSize->size + file->size.size);
   auto const assignedId = getUniqueFileId();
   file->id = assignedId;
 

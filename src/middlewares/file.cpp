@@ -23,7 +23,7 @@ auto FileUploadingSession::uploadFile(
     std::string fileType,
     std::vector<std::string> tags,
     bool wantsOwned)
--> std::tuple<int, std::string> {
+-> std::tuple<Storage::fileId, std::string> {
 
   // fileBucket bucket;
   // this->assignBucket();
@@ -65,7 +65,7 @@ auto FileUploadingSession::uploadFile(
   }
 };
 
-std::tuple<int, std::string> FileUploadingSession::obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket) {
+std::tuple<Storage::fileId, std::string> FileUploadingSession::obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket) {
   // Great! Now generate an id for this file and store it
   //    auto ks = assignedBucket->retrieveProperKeystore();
   //    auto key = ks->generateKey();
