@@ -178,7 +178,7 @@ public:
 
   // TODO lock the input/output handles
   HaystackWriteCursor write(std::ifstream& fileHandle, std::size_t position) {
-    return HaystackWriteCursor{fileHandle, this->outputHandle, position, this->allocatedSize};
+    return HaystackWriteCursor{fileHandle, this->outputHandle, position, Size{this->allocatedSize->size}};
   }
 
 //  ReadWriteHaystackCursor begin;
@@ -187,7 +187,7 @@ public:
 //  ReadOnlyHaystackCursor cend;
 
   HaystackReadCursor read(std::size_t position) {
-    return HaystackReadCursor{this->inputHandle, position, this->allocatedSize};
+    return HaystackReadCursor{this->inputHandle, position, Size{this->allocatedSize->size}};
   }
 
   inline void addFile(std::size_t position, std::ifstream file, Size fileSize) {
@@ -202,8 +202,8 @@ public:
 
   Haystack(const Haystack&);
 
-  inline Haystack(Size allocatedSize, fs::path location, bool preallocated)
-    : FileStorage(allocatedSize, location, preallocated) {
+  inline Haystack(Size size, fs::path location, bool preallocated)
+    : FileStorage(size, location, preallocated) {
     if (!preallocated) {
       allocate();
   }

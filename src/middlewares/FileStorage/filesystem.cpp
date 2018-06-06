@@ -1,5 +1,6 @@
 #include "filesystem.hpp"
 #include "storedfile.hpp"
+#include <cinttypes>
 
 namespace TinyCDN::Middleware::FileStorage {
 
@@ -10,14 +11,14 @@ fileId FilesystemStorage::getUniqueFileId()
   auto const id = ++fileUniqueId;
   // Persist incremented id to META
   META.seekp(0);
-  META << fileUniqueId;
+  META << fileUniqueId << ";" << allocatedSize->size;
   return id;
 }
 
 void FilesystemStorage::allocate()
 {
   fileUniqueId = 0;
-  META << fileUniqueId;
+  META << fileUniqueId << ";" << allocatedSize->size;
 
   fs::create_directory(this->location / "links");
 }
@@ -64,16 +65,28 @@ FilesystemStorage::~FilesystemStorage() {
 
 }
 
-FilesystemStorage::FilesystemStorage(Size allocatedSize, fs::path location, bool preallocated)
-  : FileStorage(allocatedSize, location, preallocated) {
-  META = std::ofstream(this->location / "META", std::ios::out | std::ios::app);
+FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool preallocated)
+  : FileStorage(size, location, preallocated) {
 
   if (!preallocated) {
+    META = std::ofstream(this->location / "META");
     allocate();
   }
   else {
+    std::ifstream _meta(this->location / "META");
+    std::string idAndSize((std::istreambuf_iterator<char>(_meta)),
+                           std::istreambuf_iterator<char>());
     // TODO fileUniqueId = META
+
+    auto const delim = idAndSize.find(";");
+    fileUniqueId = std::stoul(idAndSize.substr(0, delim));
+
+    char* nptr;
+    allocatedSize = std::make_unique<Size>(std::strtoumax(idAndSize.substr(delim+1).c_str(), &nptr, 10));
+
+    META = std::ofstream(this->location / "META");
   }
+
 }
 
 }

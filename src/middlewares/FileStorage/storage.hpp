@@ -17,12 +17,13 @@ using fileId = uint_fast32_t;
 class FileStorage {
 protected:
   std::atomic<fileId> fileUniqueId;
+  std::unique_ptr<Size> allocatedSize;
   //! Persistence of the fileUniqueId is implementation-specific
   virtual fileId getUniqueFileId() = 0;
 
 public:
   // static size
-  Size allocatedSize;
+  Size size;
   fs::path location;
   const bool preallocated = false;
 
@@ -51,7 +52,7 @@ public:
 
   virtual std::unique_ptr<StoredFile> createStoredFile(fs::path tmpfile, Size fileSize, bool temporary);
 
-  FileStorage(Size allocatedSize, fs::path location, bool preallocated);
+  FileStorage(Size size, fs::path location, bool preallocated);
   virtual ~FileStorage() = 0;
 };
 

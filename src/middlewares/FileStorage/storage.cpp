@@ -4,8 +4,8 @@
 
 namespace TinyCDN::Middleware::FileStorage {
 
-FileStorage::FileStorage(Size allocatedSize, fs::path location, bool preallocated)
-  : allocatedSize(allocatedSize), location(location), preallocated(preallocated) {
+FileStorage::FileStorage(Size size, fs::path location, bool preallocated)
+  : allocatedSize(std::make_unique<Size>(0)), size(size), location(location), preallocated(preallocated) {
 }
 
 FileStorage::~FileStorage() {};

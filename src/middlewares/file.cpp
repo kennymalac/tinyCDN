@@ -138,11 +138,11 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
   // Create the bucket, create its required directories, and assign the location
   auto bucket = std::make_unique<FileBucket>(size, this->location, types);
   bucket->id = fbId;
-  auto location = this->location / fs::path(std::to_string(fbId));
-  fs::create_directory(location);
+  auto fbLocation = this->location / fs::path(std::to_string(fbId));
+  fs::create_directory(fbLocation);
 
-  bucket->location = location;
-  bucket->storage = std::make_unique<FileStorage::FilesystemStorage>(bucket->allocatedSize, bucket->location, false);
+  bucket->location = fbLocation;
+  bucket->storage = std::make_unique<FileStorage::FilesystemStorage>(bucket->size, bucket->location, false);
 
   // Save file bucket information to REGISTRY
   this->registerItem(bucket);
@@ -155,13 +155,26 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
   // TODO notify nameserver?
 }
 
-// TODO constructor for FileBucket that takes in existing location???
 FileBucket::FileBucket (Size size, fs::path registryLocation, std::vector<std::string> types)
   : size(size), allocatedSize(Size{0}), types(types)
 {
 
   // Make sure there is enough space for this size
   auto availableSpace = fs::space(registryLocation).available;
+
+  if (availableSpace < size.size) {
+    throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
+  }
+}
+
+FileBucket::FileBucket (Storage::fileId id, Size size, fs::path location, std::vector<std::string> types)
+  : id(id), size(size), location(location), allocatedSize(Size{0}), types(types)
+{
+
+  // Make sure there is enough space for this size
+  auto availableSpace = fs::space(location).available;
+
+  storage = std::make_unique<FileStorage::FilesystemStorage>(size, location, true);
 
   if (availableSpace < size.size) {
     throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
@@ -216,7 +229,6 @@ auto FileBucketRegistryItemConverter::convertField(std::string field, std::strin
     char* nptr;
     params->size = std::strtoumax(value.c_str(), &nptr, 10);
   }
-  // TODO allocatedSize!!
   else if (field == "types") {
     params->types = fromCSV(value);
   }

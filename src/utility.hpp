@@ -41,6 +41,9 @@ struct Size {
   bool operator>=(const Size& S2) const {
     return this->size >= S2.size;
   }
+
+  inline Size (const Size& oldSize) : size(oldSize.size) {
+  }
 };
 
 /*! Takes a container and converts to a comma-separated string

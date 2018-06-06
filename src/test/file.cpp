@@ -9,6 +9,7 @@
 #include "src/middlewares/file.hpp"
 
 namespace file = TinyCDN::Middleware::File;
+namespace storage = TinyCDN::Middleware::FileStorage;
 
 using namespace std::placeholders;
 using namespace TinyCDN;
@@ -75,11 +76,6 @@ SCENARIO("A new CDN is created") {
 
           REQUIRE( counter == fbArgs.size() );
         }
-
-        // Tear down filebuckets
-        for (const auto& fb : fileBuckets) {
-          fb->storage->destroy();
-        }
       }
     }
   }
@@ -102,18 +98,41 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
         REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
 
+        using fbTestProps = std::tuple<storage::fileId&, Size, Size&, fs::path, std::vector<std::string>&, std::vector<std::string>&>;
+
+        std::vector<Size> fbSizes;
+        std::vector<std::vector<std::string>> fbTypes;
+        std::vector<storage::fileId> fbIds;
+
         for (unsigned int i = 0; i < static_cast<unsigned int>(fbArgs.size()); i++) {
           auto const fbArg = fbArgs[i];
           auto const& bucket = std::apply(findBucket, fbArg);
           auto const& registryItem = fbRegistry->registry[i];
 
+          // Ownership of the FileBucket was transferred to this scope
+          REQUIRE( registryItem->fileBucket.has_value() == false );
+
+          // Test the fields of the FileBucket
+          fbSizes.emplace_back(static_cast<Size>(std::get<2>(fbArgs[i])));
+          fbTypes.emplace_back(static_cast<std::vector<std::string>>(std::get<4>(fbArgs[i])));
+          fbIds.emplace_back(static_cast<storage::fileId>(i+1));
+
+          REQUIRE( bucket->id == fbIds[i] );
+          REQUIRE( bucket->location == (fbRegistry->location / fs::path{std::to_string(fbIds[i])}) );
+          REQUIRE( bucket->size.size == fbSizes[i].size );
+          REQUIRE( bucket->allocatedSize.size == Size{0_kB}.size );
+
           REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
+
+          // Test FileBucket storage
+
+          // Tear down filebucket
+          bucket->storage->destroy();
         }
       }
     }
 
     // Tear down
-
     fs::remove("REGISTRY");
     fs::remove("META");
   }

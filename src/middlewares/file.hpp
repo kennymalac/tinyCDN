@@ -69,10 +69,7 @@ struct FileBucket {
   // distributionPolicy
 
   FileBucket(Size allocatedSize, fs::path registryLocation, std::vector<std::string> types);
-  inline FileBucket (Storage::fileId id, Size size, fs::path location, std::vector<std::string> types)
-    : id(id), size(size), allocatedSize(Size{0}), location(location), types(types)
-  {}
-
+  FileBucket(Storage::fileId id, Size size, fs::path location, std::vector<std::string> types);
 };
 
 //! A container representing a FileBucket's persistent state as stored in the FileBucketRegistry
@@ -172,7 +169,6 @@ struct FileBucketRegistry {
 struct FileBucketParams {
   Storage::fileId id{0};
   uintmax_t size;
-  uintmax_t assignedSize;
   fs::path location;
   // NOTE stringly typed for now
   std::vector<std::string> types;
