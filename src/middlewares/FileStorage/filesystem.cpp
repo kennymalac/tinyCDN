@@ -10,15 +10,20 @@ fileId FilesystemStorage::getUniqueFileId()
 {
   auto const id = ++fileUniqueId;
   // Persist incremented id to META
-  META.seekp(0);
-  META << fileUniqueId << ";" << allocatedSize->size;
+  persist();
   return id;
+}
+
+void FilesystemStorage::persist() {
+  META.seekp(0);
+  META << fileUniqueId << ';' << allocatedSize->size;
 }
 
 void FilesystemStorage::allocate()
 {
   fileUniqueId = 0;
-  META << fileUniqueId << ";" << allocatedSize->size;
+  META.seekp(0);
+  META << fileUniqueId << ';' << allocatedSize->size;
 
   fs::create_directory(this->location / "links");
 }
@@ -31,11 +36,16 @@ void FilesystemStorage::destroy()
 // cdn-website.com/<bucket_id>/<file_id>/file.jpg
 std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
 {
-  auto stFile = std::make_unique<StoredFile>(
-      fs::read_symlink(this->location / this->linkDirName / std::to_string(id)), false);
+  try {
+    auto stFile = std::make_unique<StoredFile>(
+          fs::read_symlink(this->location / this->linkDirName / std::to_string(id)), false);
 
-  stFile->id = id;
-  return stFile;
+    stFile->id = id;
+    return stFile;
+  }
+  catch (fs::filesystem_error& e) {
+    throw File::FileStorageException(0, e.what(), std::optional<StoredFile>{});
+  }
 }
 
 std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> file)
@@ -45,8 +55,8 @@ std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> f
   file->id = assignedId;
 
   auto assignedLocation = this->location / file->location.filename();
-  std::cout << "location: " << file->location << "\n";
-  std::cout << "assignedLocation: " << assignedLocation << "\n";
+  // std::cout << "location: " << file->location << "\n";
+  // std::cout << "assignedLocation: " << assignedLocation << "\n";
 
   fs::copy(file->location, assignedLocation);
   fs::remove(file->location);
@@ -62,7 +72,19 @@ std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> f
 
 void FilesystemStorage::remove(std::unique_ptr<StoredFile> file)
 {
+  if (!file->id.has_value()) {
+    throw File::FileStorageException(0, "StoredFile file has no id", std::make_optional<StoredFile>(*file));
+  }
 
+  fs::remove(this->location / this->linkDirName / std::to_string(file->id.value()));
+
+  allocatedSize = file->size.size != 0
+      ? std::make_unique<Size>(allocatedSize->size - file->size.size)
+      : std::make_unique<Size>(allocatedSize->size - assignStoredFileSize(*file).size);
+
+  fs::remove(file->location);
+
+  persist();
 }
 
 FilesystemStorage::~FilesystemStorage() {
@@ -81,13 +103,19 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
     std::ifstream _meta(this->location / "META");
     std::string idAndSize((std::istreambuf_iterator<char>(_meta)),
                            std::istreambuf_iterator<char>());
-    // TODO fileUniqueId = META
+    _meta.close();
+
+    // TODO check is_open etc.
 
     auto const delim = idAndSize.find(";");
+    // std::cout  << "idAndSize: " << idAndSize << "\n";
+    // std::cout << "id: " << idAndSize.substr(0, delim) << "\n";
     fileUniqueId = std::stoul(idAndSize.substr(0, delim));
 
     char* nptr;
-    allocatedSize = std::make_unique<Size>(std::strtoumax(idAndSize.substr(delim+1).c_str(), &nptr, 10));
+    auto justSize = idAndSize.substr(delim+1);
+
+    allocatedSize = std::make_unique<Size>(std::strtoumax(justSize.c_str(), &nptr, 10));
 
     META = std::ofstream(this->location / "META");
   }

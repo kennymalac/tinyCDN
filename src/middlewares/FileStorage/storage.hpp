@@ -44,15 +44,12 @@ public:
 
   //! Helper method for deducing a file size
   auto inline assignStoredFileSize(StoredFile newContentFile) {
-    std::ifstream f;
-    f.open(newContentFile.location, std::ios_base::binary | std::ios_base::in);
-    if (!f.good() || f.eof() || !f.is_open()) {
-      throw File::FileStorageException(0, "Content file cannot be opened", std::make_optional<StoredFile>(newContentFile));
+    try {
+      return Size{static_cast<uintmax_t>(fs::file_size(newContentFile.location))};
     }
-    f.seekg(0, std::ios_base::beg);
-    std::ifstream::pos_type begin_pos = f.tellg();
-    f.seekg(0, std::ios_base::end);
-    return Size{static_cast<uintmax_t>(f.tellg() - begin_pos)};
+    catch (fs::filesystem_error& e) {
+      throw File::FileStorageException(0, e.what(), std::make_optional<StoredFile>(newContentFile));
+    }
   }
 
   virtual std::unique_ptr<StoredFile> createStoredFile(fs::path tmpfile, Size fileSize, bool temporary);

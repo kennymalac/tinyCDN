@@ -14,8 +14,6 @@ using namespace TinyCDN;
 
 namespace fs = std::experimental::filesystem;
 
-static auto fileSize = Size{2_mB};
-
 static std::string testValue =
         R"(
         blah blah blah
@@ -46,6 +44,7 @@ SCENARIO("a user uploads a file to the CDN") {
       std::string ctype = "image";
       std::string ftype = "plain/txt";
       auto tags = std::vector<std::string>{"test"};
+      auto fileSize = Size{fs::file_size(fileName)};
       auto result = uploadSession->uploadFile(fileName, fileSize, ctype, ftype, tags, false);
       const auto& [fileId, fileLocationStr] = result;
 
@@ -69,7 +68,7 @@ SCENARIO("a user uploads a file to the CDN") {
   }
 }
 
-SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file restarted") {
+SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file is restarted") {
 
   GIVEN("A spawned CDNMaster and a persisted FileBucket") {
     CDNMaster master(true);
@@ -83,19 +82,31 @@ SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file restart
       auto storedFile = fileBucket->storage->lookup(static_cast<storage::fileId>(1));
 
       THEN("the FileBucket storage is still the same allocatedSize, the StoredFile id is the same, the StoredFile is readable") {
-        REQUIRE( fileBucket->storage->getAllocatedSize().size == fileSize.size );
+        REQUIRE( fileBucket->storage->getAllocatedSize().size == fs::file_size(storedFile->location) );
         REQUIRE( storedFile->id == fileId );
         std::ifstream storedFileIn(storedFile->location);
         std::string fileContents((std::istreambuf_iterator<char>(storedFileIn)),
                                  std::istreambuf_iterator<char>());
         REQUIRE( fileContents == testValue );
-      }
-    }
 
-    // Tear down
-    fileBucket->storage->destroy();
-    fs::remove("REGISTRY");
-    fs::remove("META");
+        AND_WHEN("an uploaded file is removed") {
+          // NOTE: when adding multithreading, address possible race condition if file is being fetched before delete?
+          storage::fileId const fileId = 1;
+          auto storedFile = fileBucket->storage->lookup(static_cast<storage::fileId>(1));
+          fileBucket->storage->remove(std::move(storedFile));
+
+          THEN("The storedFile is no longer in scope, the allocatedSize was decreased, and a lookup fails") {
+            REQUIRE( storedFile == nullptr );
+            REQUIRE( fileBucket->storage->getAllocatedSize().size == 0 );
+            REQUIRE_THROWS_AS( fileBucket->storage->lookup(static_cast<storage::fileId>(1)), file::FileStorageException );
+          }
+        }
+      }
+      // Tear down
+      fileBucket->storage->destroy();
+      fs::remove("REGISTRY");
+      fs::remove("META");
+    }
   }
 }
 

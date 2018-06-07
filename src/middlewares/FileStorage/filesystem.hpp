@@ -9,6 +9,8 @@ class FilesystemStorage : public FileStorage {
 private:
   std::ofstream META;
   static const fs::path linkDirName;
+  //! Saves META properties
+  void persist();
 
 protected:
   fileId getUniqueFileId();

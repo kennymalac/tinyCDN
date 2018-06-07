@@ -56,7 +56,7 @@ auto FileUploadingSession::uploadFile(
         return this->obtainStoredFileUpload(temporaryLocation, fileSize, std::move(assignedBucket));
       }
       catch (FileBucketException e) {
-        std::cout << e.what();
+        std::cerr << e.what();
       }
     }
     else {
@@ -107,7 +107,7 @@ std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
         auto const notSupportsCtypes = std::any_of(types.cbegin(), types.cend(), [&fb](auto const contentType) {
           return std::find(fb->types.cbegin(), fb->types.cend(), contentType) == fb->types.end();
         });
-        std::cout << notSupportsCtypes << "\n";
+        //std::cout << notSupportsCtypes << "\n";
         // and supports this file's FileType.
         // && std::find(b.fileTypes.begin(), b.fileTypes.end(), fileType) != b.fileTypes.end()
         if (!notSupportsCtypes) {
