@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <variant>
+#include <future>
 
 #include "../utility.hpp"
 #include "FileStorage/filesystem.hpp"
@@ -116,24 +117,13 @@ struct FileBucketRegistry {
    * \brief registerItem converts an assumingly newly-created FileBucket and appends its configuration as a FileBucketRegistryItem into REGISTRY
    * \param fb a FileBucket instance
    */
-  inline void registerItem(std::unique_ptr<FileBucket>& fb) {
-    std::unordered_map<std::string, std::string> input = {
-      {"location", static_cast<std::string>(fb->location)},
-      {"id", std::to_string(fb->id)},
-      {"size", std::to_string(fb->size.size)},
-      {"types", asCSV<std::vector<std::string>>(fb->types)}
-    };
-    auto item = std::make_unique<FileBucketRegistryItem>(input);
-
-    {
-      std::ofstream registryFile(this->location / this->registryFileName, std::ios::out | std::ios::app);
-      registryFile << item->contents << "\n";
-    }
-
-    this->registry.push_back(std::move(item));
-  }
-
+  void registerItem(std::unique_ptr<FileBucket>& fb);
   Storage::fileId getUniqueFileBucketId();
+
+  //! Safely returns a stream handle for the Registry
+  template <typename StreamType>
+  StreamType getRegistry();
+
   //!
   void loadRegistry();
 
@@ -202,23 +192,26 @@ struct FileBucketRegistryItemConverter {
 
 // typedef FileBucket<BLAKEKey> BLAKEBucket;
 
-struct FileUploadingSession {
+struct FileUploadingService {
+  std::future<std::unique_ptr<FileBucket>> requestFileBucket(std::unique_ptr<FileStorage::StoredFile>& tmpFile, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
+
+  std::future<std::tuple<Storage::fileId, std::string>> uploadFile (std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> tmpFile, std::string contentType, std::string fileType, std::vector<std::string> tags);
+
+  // TODO make this a mutex
   std::unique_ptr<FileBucketRegistry>& registry;
-  std::tuple<Storage::fileId, std::string> obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket);
   // StatusField
-  std::tuple<Storage::fileId, std::string> uploadFile (std::string temporaryLocation, Size fileSize, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
+
+  // TODO active buckets should be on REGISTRY lookup table - not uploading session
   //! "active" public FileBuckets that reside in memory until full
   std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
 
-  inline FileUploadingSession(
+  inline FileUploadingService(
       std::unique_ptr<FileBucketRegistry>& registry)
     : registry(registry)
   {}
 };
 
 struct FileHostingSession {
-  // std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
-
   // auto findToken(auto token, FileType ft) {
   //   // DFS - Depth first search
   //   for (directory)

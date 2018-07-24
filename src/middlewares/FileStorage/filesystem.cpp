@@ -16,14 +16,15 @@ fileId FilesystemStorage::getUniqueFileId()
 
 void FilesystemStorage::persist() {
   META.seekp(0);
+
   META << fileUniqueId << ';' << allocatedSize->size;
+  META.flush();
 }
 
 void FilesystemStorage::allocate()
 {
   fileUniqueId = 0;
-  META.seekp(0);
-  META << fileUniqueId << ';' << allocatedSize->size;
+  persist();
 
   fs::create_directory(this->location / "links");
 }
@@ -44,7 +45,7 @@ std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
     return stFile;
   }
   catch (fs::filesystem_error& e) {
-    throw File::FileStorageException(0, e.what(), std::optional<StoredFile>{});
+    throw File::FileStorageException(0, e.what());
   }
 }
 
@@ -79,8 +80,8 @@ void FilesystemStorage::remove(std::unique_ptr<StoredFile> file)
   fs::remove(this->location / this->linkDirName / std::to_string(file->id.value()));
 
   allocatedSize = file->size.size != 0
-      ? std::make_unique<Size>(allocatedSize->size - file->size.size)
-      : std::make_unique<Size>(allocatedSize->size - assignStoredFileSize(*file).size);
+    ? std::make_unique<Size>(allocatedSize->size - file->size.size)
+    : std::make_unique<Size>(allocatedSize->size - file->getRealSize().size);
 
   fs::remove(file->location);
 
@@ -96,16 +97,23 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
 
   if (!preallocated) {
     META = std::ofstream(this->location / "META");
+
+    if (!META.is_open() || META.bad()) {
+      throw File::FileStorageException(3, "META file cannot be created");
+    }
+
     allocatedSize = std::make_unique<Size>(0);
     allocate();
   }
   else {
     std::ifstream _meta(this->location / "META");
+    if (!_meta.is_open() || _meta.bad()) {
+      throw File::FileStorageException(2, "META file does not exist or is not available");
+    }
+
     std::string idAndSize((std::istreambuf_iterator<char>(_meta)),
                            std::istreambuf_iterator<char>());
     _meta.close();
-
-    // TODO check is_open etc.
 
     auto const delim = idAndSize.find(";");
     // std::cout  << "idAndSize: " << idAndSize << "\n";

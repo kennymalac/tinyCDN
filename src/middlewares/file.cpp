@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <cinttypes>
+#include <future>
 
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
@@ -16,21 +17,27 @@ namespace fs = std::experimental::filesystem;
 #include "FileStorage/filesystem.hpp"
 
 namespace TinyCDN::Middleware::File {
-auto FileUploadingSession::uploadFile(
-    std::string temporaryLocation,
-    Size fileSize,
-    std::string contentType,
-    std::string fileType,
-    std::vector<std::string> tags,
-    bool wantsOwned)
--> std::tuple<Storage::fileId, std::string> {
 
-  // fileBucket bucket;
-  // this->assignBucket();
+auto FileUploadingService::requestFileBucket(
+  std::unique_ptr<FileStorage::StoredFile>& tmpFile,
+  std::string contentType,
+  std::string fileType,
+  std::vector<std::string> tags,
+  bool wantsOwned)
+-> std::future<std::unique_ptr<FileBucket>> {
+  auto fileSize = tmpFile->size;
 
-  // If wantsOwned, determine if the user has existing FileBuckets that take these types
+  // TODO If wantsOwned, determine if the user has existing FileBuckets that take these types
   if (wantsOwned) {
-    return std::make_tuple(1, static_cast<std::string>("test"));
+    try {
+      auto assignedBucket = registry->findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags);
+      std::promise<std::unique_ptr<FileBucket>> test;
+      test.set_value(std::move(assignedBucket));
+      return test.get_future();
+    }
+    catch (FileBucketException e) {
+      std::cerr << e.what();
+    }
   }
   else {
     // First remove all full FileBuckets
@@ -50,35 +57,43 @@ auto FileUploadingSession::uploadFile(
     });
 
     if (maybeBucket == currentFileBuckets.end()) {
-      // i.e. Audio -> read MANIFEST.in in Public/Audio/
       try {
-        auto assignedBucket = registry->findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags);
-        return this->obtainStoredFileUpload(temporaryLocation, fileSize, std::move(assignedBucket));
+        std::promise<std::unique_ptr<FileBucket>> test;
+        test.set_value(registry->findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags));
+        return test.get_future();
       }
       catch (FileBucketException e) {
         std::cerr << e.what();
       }
     }
     else {
-      return this->obtainStoredFileUpload(temporaryLocation, fileSize, std::move(*maybeBucket));
+      std::promise<std::unique_ptr<FileBucket>> test;
+      test.set_value(std::move(*maybeBucket));
+      return test.get_future();
     }
   }
-};
+}
 
-std::tuple<Storage::fileId, std::string> FileUploadingSession::obtainStoredFileUpload(fs::path temporaryLocation, Size fileSize, std::unique_ptr<FileBucket> assignedBucket) {
+auto FileUploadingService::uploadFile(
+  std::unique_ptr<FileBucket> bucket,
+  std::unique_ptr<FileStorage::StoredFile> tmpFile,
+  std::string contentType,
+  std::string fileType,
+  std::vector<std::string> tags)
+-> std::future<std::tuple<Storage::fileId, std::string>> {
   // Great! Now generate an id for this file and store it
   //    auto ks = assignedBucket->retrieveProperKeystore();
   //    auto key = ks->generateKey();
 
-  auto storedFile = assignedBucket->storage->createStoredFile(temporaryLocation, fileSize, true);
-
-  storedFile = assignedBucket->storage->add(std::move(storedFile));
+  auto storedFile = bucket->storage->add(std::move(tmpFile));
+  std::promise<std::tuple<Storage::fileId, std::string>> test;
 
   // Copy id and throw away unique_ptr
-  auto const fbId = assignedBucket->id;
-  currentFileBuckets.push_back(std::move(assignedBucket));
+  auto const fbId = bucket->id;
+  currentFileBuckets.push_back(std::move(bucket));
 
-  return {fbId, storedFile->location.string()};
+  test.set_value({fbId, std::to_string(storedFile->id.value())});
+  return test.get_future();
 }
 
 std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
@@ -134,11 +149,11 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
 
   auto const fbId = this->getUniqueFileBucketId();
 
-  // Assign semi-permanent location
-
   // Create the bucket, create its required directories, and assign the location
   auto bucket = std::make_unique<FileBucket>(size, this->location, types);
   bucket->id = fbId;
+
+  // Assign semi-permanent location
   auto fbLocation = this->location / fs::path(std::to_string(fbId));
   fs::create_directory(fbLocation);
 
@@ -246,14 +261,53 @@ std::unique_ptr<T> FileBucketRegistryItemConverter::convertToValue() {
   return std::move(item);
 }
 
-void FileBucketRegistry::loadRegistry() {
-  std::string line;
+template<typename StreamType>
+StreamType FileBucketRegistry::getRegistry() {}
+
+template<>
+std::ifstream FileBucketRegistry::getRegistry() {
   std::ifstream registryFile(this->location / this->registryFileName);
-  std::vector<std::unique_ptr<FileBucket>> fbs;
 
   if (!registryFile.is_open() || registryFile.bad()) {
-    throw FileBucketRegistryException(*this, 0, "Registry file could not be opened");
+    throw FileBucketRegistryException(*this, 0, "Registry file could not be opened for reading");
   }
+
+  return registryFile;
+}
+
+template<>
+std::ofstream FileBucketRegistry::getRegistry() {
+  std::ofstream registryFile(this->location / this->registryFileName, std::ios::out | std::ios::app);
+
+  if (!registryFile.is_open() || registryFile.bad()) {
+    throw FileBucketRegistryException(*this, 0, "Registry file could not be opened for writing");
+  }
+
+  return registryFile;
+}
+
+void FileBucketRegistry::registerItem(std::unique_ptr<FileBucket>& fb) {
+  std::unordered_map<std::string, std::string> input = {
+    {"location", static_cast<std::string>(fb->location)},
+    {"id", std::to_string(fb->id)},
+    {"size", std::to_string(fb->size.size)},
+    {"types", asCSV<std::vector<std::string>>(fb->types)}
+  };
+  auto item = std::make_unique<FileBucketRegistryItem>(input);
+
+  {
+    auto registryFile = this->getRegistry<std::ofstream>();
+    registryFile << item->contents << "\n";
+  }
+
+  this->registry.push_back(std::move(item));
+}
+
+void FileBucketRegistry::loadRegistry() {
+  std::string line;
+  std::vector<std::unique_ptr<FileBucket>> fbs;
+
+  auto registryFile = this->getRegistry<std::ifstream>();
 
   auto converter = std::make_unique<FileBucketRegistryItemConverter>();
   while (getline(registryFile, line)) {

@@ -9,7 +9,8 @@ namespace fs = std::experimental::filesystem;
 namespace TinyCDN {
 void CDNMaster::spawnCDN() {
   // return statusfield
-
+  // test
+  std::cout << "spawning master, existing: " << this->existing << " " << "\n";
   // initialize a first-time registry
   session->registry = std::make_unique<Middleware::File::FileBucketRegistry>(
         fs::current_path(), "REGISTRY");
@@ -22,4 +23,10 @@ void CDNMaster::spawnCDN() {
     session->registry->loadRegistry();
   }
 };
+
+CDNMaster* CDNMasterSingleton::getInstance(bool existing) {
+  static CDNMaster instance(existing);
+  return &instance;
+}
+
 }

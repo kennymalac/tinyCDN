@@ -33,9 +33,8 @@ SCENARIO("A new CDN is created") {
       master.spawnCDN();
       THEN("it creates an empty REGISTRY file") {
         REQUIRE(fs::is_empty(fs::path{"REGISTRY"}) == true);
-      }
 
-      WHEN("FileBuckets are created by the FileBucketRegistry") {
+      AND_WHEN("FileBuckets are created by the FileBucketRegistry") {
 
         std::vector<std::unique_ptr<file::FileBucket>> fileBuckets;
 
@@ -78,6 +77,7 @@ SCENARIO("A new CDN is created") {
         }
       }
     }
+  }
   }
 };
 

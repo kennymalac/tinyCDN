@@ -9,6 +9,10 @@ FileStorageException::FileStorageException(int code, std::string explanation, co
   : std::runtime_error(explanation), code(code), storedFile(storedFile)
 {}
 
+FileStorageException::FileStorageException(int code, std::string explanation)
+  : std::runtime_error(explanation), code(code), storedFile(std::optional<Storage::StoredFile>{})
+{}
+
 FileBucketException::FileBucketException(const FileBucket &fb, int code, std::string explanation)
   : std::runtime_error(explanation), code(code), fileBucket(fb)
 {}

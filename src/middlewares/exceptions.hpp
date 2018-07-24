@@ -27,6 +27,7 @@ class FileStorageException : public std::runtime_error {
 public:
 
   FileStorageException(int code, std::string explanation, const std::optional<Storage::StoredFile> storedFile);
+  FileStorageException(int code, std::string explanation);
 
   virtual const char* what() {
     std::ostringstream errorLog;
@@ -40,6 +41,12 @@ public:
       break;
     case 1:
       errorLog << "invalid persisted filename";
+      break;
+    case 2:
+      errorLog << "Loading from persisted state failed";
+      break;
+    case 3:
+      errorLog << "Allocation step failed";
       break;
     default:
       errorLog << "";

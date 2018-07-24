@@ -42,18 +42,6 @@ public:
   virtual std::unique_ptr<StoredFile> add(std::unique_ptr<StoredFile> file) = 0;
   virtual void remove(std::unique_ptr<StoredFile> file) = 0;
 
-  //! Helper method for deducing a file size
-  auto inline assignStoredFileSize(StoredFile newContentFile) {
-    try {
-      return Size{static_cast<uintmax_t>(fs::file_size(newContentFile.location))};
-    }
-    catch (fs::filesystem_error& e) {
-      throw File::FileStorageException(0, e.what(), std::make_optional<StoredFile>(newContentFile));
-    }
-  }
-
-  virtual std::unique_ptr<StoredFile> createStoredFile(fs::path tmpfile, Size fileSize, bool temporary);
-
   FileStorage(Size size, fs::path location, bool preallocated);
   virtual ~FileStorage() = 0;
 };

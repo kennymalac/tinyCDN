@@ -11,7 +11,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_BUILD_TYPE Debug)
 
 # Cmake 3.8 isn't out yet so we need to require c++ 17 manually
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread")
 
 # Export a JSON file with information about our build for irony-mode
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
@@ -42,6 +42,8 @@ set(SOURCES
   src/middlewares/FileStorage/filesystem.cpp
   src/master.hpp
   src/master.cpp
+  src/middlewares/file_interop.h
+  src/interop.cpp
 )
 
 set(TEST_SOURCES

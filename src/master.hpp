@@ -1,20 +1,34 @@
 #pragma once
 
+#ifdef __cplusplus
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 
 #include "middlewares/file.hpp"
+#endif
 
+#ifdef __cplusplus
 namespace TinyCDN {
 
 //! Currently only holds a pointer to the FileBucketRegistry which contains information about all initiated FileBuckets.
 struct CDNMasterSession {
   std::unique_ptr<Middleware::File::FileBucketRegistry> registry;
 
+  //SessionProvisioner session;
+
   // uploadSessions;
   // hostingSessions;
 };
+//extern "C" {
+//  struct SessionProvisioner {
+//    CDNMasterSession* master;
+//    Middleware::File::FileUploadingSession* getUploadingSession() {
+//      return new Middleware::File::FileUploadingSession;
+//    };
 
+
+//  };
+//}
 class CDNMaster {
 // TODO private
 public:
@@ -38,4 +52,15 @@ public:
     session = std::make_unique<CDNMasterSession>();
   }
 };
+
+struct CDNMasterSingleton {
+  static CDNMaster* getInstance(bool existing = false);
+};
+
 }
+#else
+typedef struct CDNMaster CDNMaster;
+typedef struct CDNMasterSingleton CDNMasterSingleton;
+typedef struct StoredFile StoredFile;
+typedef struct FileBucket FileBucket;
+#endif

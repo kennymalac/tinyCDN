@@ -27,41 +27,53 @@ static std::string testValue =
 SCENARIO("a user uploads a file to the CDN") {
 
   GIVEN("a temporary file has been already stored and CDNMaster initialized and an upload session exists") {
-    std::string fileName = "./copyThis.txt";
+    std::string fileName = "copyThis.txt";
     {
-      std::ofstream tmpFile(fileName);
+      std::ofstream tmpFile(std::string{"./"}.append(fileName));
       tmpFile << testValue;
     }
 
     CDNMaster master(false);
     master.spawnCDN();
 
-    auto uploadSession = std::make_unique<file::FileUploadingSession>(
+    auto uploadService = std::make_unique<file::FileUploadingService>(
           master.session->registry);
 
-    WHEN("the uploadFile method is invoked to add a file to a public FileBucket") {
+
+    WHEN("the requestBucket method is invoked to obtain an available public FileBucket") {
       // Fake file Size, type, etc.
       std::string ctype = "image";
       std::string ftype = "plain/txt";
       auto tags = std::vector<std::string>{"test"};
       auto fileSize = Size{fs::file_size(fileName)};
-      auto result = uploadSession->uploadFile(fileName, fileSize, ctype, ftype, tags, false);
-      const auto& [fileId, fileLocationStr] = result;
 
-      THEN("the file can be retrieved and the allocatedSize was increased") {
-        auto&& fb = uploadSession->currentFileBuckets[0];
-        auto storedFile = fb->storage->lookup(fileId);
+      auto storedFile = std::make_unique<storage::StoredFile>(fileSize, fileName, true);
+      auto bucket = uploadService->requestFileBucket(storedFile, ctype, ftype, tags, false).get();
 
-        REQUIRE( storedFile->id == fileId );
-        REQUIRE( storedFile->location == fileLocationStr );
+      THEN("An empty bucket is retrieved") {
+        REQUIRE( bucket->storage->getAllocatedSize().size == 0 );
 
-        REQUIRE( fb->storage->getAllocatedSize().size == fileSize.size );
+        AND_WHEN("the uploadFile method is invoked to add a file to the public FileBucket") {
+          auto result = uploadService->uploadFile(std::move(bucket), std::move(storedFile), ctype, ftype, tags).get();
+          const auto& [fileId, fbId] = result;
 
-        {
-          std::ifstream storedFileIn(storedFile->location);
-          std::string fileContents((std::istreambuf_iterator<char>(storedFileIn)),
-                                              std::istreambuf_iterator<char>());
-          REQUIRE( fileContents == testValue );
+          THEN("the file can be retrieved and the allocatedSize was increased") {
+            // TODO get bucket from fbId
+            auto&& fb = uploadService->currentFileBuckets[0];
+            auto sf = fb->storage->lookup(fileId);
+
+            REQUIRE( sf->id == fileId );
+            REQUIRE( sf->location == (master.session->registry->location / fs::path{fbId} / fileName) );
+
+            REQUIRE( fb->storage->getAllocatedSize().size == fileSize.size );
+
+            {
+              std::ifstream storedFileIn(sf->location);
+              std::string fileContents((std::istreambuf_iterator<char>(storedFileIn)),
+                                       std::istreambuf_iterator<char>());
+              REQUIRE( fileContents == testValue );
+            }
+          }
         }
       }
     }
