@@ -43,6 +43,7 @@ public:
   virtual void remove(std::unique_ptr<StoredFile> file) = 0;
 
   FileStorage(Size size, fs::path location, bool preallocated);
+  FileStorage(const FileStorage&) = delete;
   virtual ~FileStorage() = 0;
 };
 

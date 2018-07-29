@@ -5,6 +5,7 @@
 namespace TinyCDN::Middleware::FileStorage {
 
 const fs::path FilesystemStorage::linkDirName = fs::path{"links/"};
+const int FilesystemStorage::storeFileThreshold = 1000;
 
 fileId FilesystemStorage::getUniqueFileId()
 {
@@ -14,19 +15,36 @@ fileId FilesystemStorage::getUniqueFileId()
   return id;
 }
 
+fileId FilesystemStorage::getUniqueStoreId()
+{
+  std::cout << "getUniqueStoreId " << storeUniqueId << std::endl;
+  auto const id = ++storeUniqueId;
+
+  // Create the store's directory
+  fs::create_directory(this->location / "store" / std::to_string(id));
+
+  // Persist incremented id to META
+  persist();
+  return id;
+}
+
 void FilesystemStorage::persist() {
   META.seekp(0);
 
-  META << fileUniqueId << ';' << allocatedSize->size;
+  META << storeUniqueId << ";" << fileUniqueId << ';' << allocatedSize->size;
   META.flush();
 }
 
 void FilesystemStorage::allocate()
 {
   fileUniqueId = 0;
-  persist();
+  storeUniqueId = 1;
 
   fs::create_directory(this->location / "links");
+  fs::create_directory(this->location / "store");
+  fs::create_directory(this->location / "store" / std::to_string(1));
+
+  persist();
 }
 
 void FilesystemStorage::destroy()
@@ -52,10 +70,21 @@ std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
 std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> file)
 {
   allocatedSize = std::make_unique<Size>(allocatedSize->size + file->size.size);
+
   auto const assignedId = getUniqueFileId();
   file->id = assignedId;
 
-  auto assignedLocation = this->location / file->location.filename();
+  auto assignedLocation = this->location / "store" / fs::path(std::to_string(storeUniqueId)) / file->location.filename();
+
+  std::ios::sync_with_stdio();
+  std::cout << "FileSystemStorage::add assignedLocation: " << assignedLocation << std::endl;
+  // TODO increment store's amount of files stored
+  if (fs::exists(assignedLocation)) {
+    // The likelihood that a file in a separate would have the same filename is very low, so just create a new store folder for now
+    // TODO reuse existing stores, don't always create new ones in this situation
+    auto const newStoreId = getUniqueStoreId();
+    assignedLocation = this->location / "store" / fs::path(std::to_string(newStoreId)) / file->location.filename();
+  }
   // std::cout << "location: " << file->location << "\n";
   // std::cout << "assignedLocation: " << assignedLocation << "\n";
 
@@ -95,6 +124,13 @@ FilesystemStorage::~FilesystemStorage() {
 FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool preallocated)
   : FileStorage(size, location, preallocated) {
 
+  std::ios::sync_with_stdio();
+
+  std::cout << "Creating new FilesystemStorage...\n"
+            << "size: " << size.size
+            << " location: " << location
+            << " preallocated: " << preallocated << std::endl;
+
   if (!preallocated) {
     META = std::ofstream(this->location / "META");
 
@@ -111,21 +147,35 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
       throw File::FileStorageException(2, "META file does not exist or is not available");
     }
 
-    std::string idAndSize((std::istreambuf_iterator<char>(_meta)),
+    std::string idsAndSize((std::istreambuf_iterator<char>(_meta)),
                            std::istreambuf_iterator<char>());
     _meta.close();
+    std::cout << "idsAndSize " << idsAndSize << std::endl;
 
-    auto const delim = idAndSize.find(";");
-    // std::cout  << "idAndSize: " << idAndSize << "\n";
-    // std::cout << "id: " << idAndSize.substr(0, delim) << "\n";
-    fileUniqueId = std::stoul(idAndSize.substr(0, delim));
+    try {
+      auto delim = idsAndSize.find(";");
+      storeUniqueId = std::stoul(idsAndSize.substr(0, delim));
+      std::cout << "storeUniqueId: " << storeUniqueId << std::endl;
+      auto nextDelim = idsAndSize.find(";", delim+1);
 
-    char* nptr;
-    auto justSize = idAndSize.substr(delim+1);
+      fileUniqueId = std::stoul(idsAndSize.substr(delim+1, nextDelim));
+      std::cout << "fileUniqueId: " << fileUniqueId << std::endl;
+      delim = nextDelim;
 
-    allocatedSize = std::make_unique<Size>(std::strtoumax(justSize.c_str(), &nptr, 10));
+      char* nptr;
+      auto justSize = idsAndSize.substr(delim+1);
+
+      allocatedSize = std::make_unique<Size>(std::strtoumax(justSize.c_str(), &nptr, 10));
+    }
+    catch (std::invalid_argument e) {
+      throw File::FileStorageException(-1, std::string{"ERROR converting META file: "}.append(e.what()));
+    }
 
     META = std::ofstream(this->location / "META");
+
+    if (!META.is_open() || META.bad()) {
+      throw File::FileStorageException(-1, "META file cannot be opened or is corrupted");
+    }
   }
 
 }

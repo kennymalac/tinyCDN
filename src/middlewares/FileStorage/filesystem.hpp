@@ -13,6 +13,11 @@ private:
   void persist();
 
 protected:
+  std::atomic<fileId> storeUniqueId;
+  //! Once the store reaches this amount of files, another folder will get created
+  static const int storeFileThreshold;
+
+  fileId getUniqueStoreId();
   fileId getUniqueFileId();
 
 public:

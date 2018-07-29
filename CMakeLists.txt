@@ -54,12 +54,12 @@ set(TEST_SOURCES
 include_directories("${PROJECT_SOURCE_DIR}")
 
 #add_subdirectory(src)
-# Create the run game executable
-add_library(TinyCDN_Base ${SOURCES})
+add_library(TinyCDN_Base SHARED ${SOURCES})
 add_library(stdc++fs UNKNOWN IMPORTED)
 set_property(TARGET stdc++fs PROPERTY IMPORTED_LOCATION "/usr/lib/gcc/x86_64-linux-gnu/7/libstdc++fs.a")
 #target_link_libraries(TinyCDN_Base PUBLIC)
 add_executable(Run src/main.cpp)
+target_link_libraries(TinyCDN_Base stdc++fs)
 target_link_libraries(Run TinyCDN_Base stdc++fs)
 
 # TODO make testing an option, see https://github.com/ComicSansMS/GhulbusBase/blob/master/CMakeLists.txt
@@ -73,6 +73,16 @@ add_executable(Test ${TEST_SOURCES})
 target_link_libraries(Test TinyCDN_Base Catch stdc++fs)
 add_test(NAME TestBase COMMAND Test)
 
+
+option(BUILD_CFFI "Generate the shared library" ON)
+if(BUILD_CFFI)
+  add_library(tinyCDN SHARED src/middlewares/file_interop.h src/interop.c src/interop.cpp)
+  add_executable(TestInterop src/interop.cpp)
+
+  target_link_libraries(TestInterop tinyCDN)
+  set_target_properties(tinyCDN PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "CXX")
+  target_link_libraries(tinyCDN TinyCDN_Base)
+endif()
 
 option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" OFF)
 if(BUILD_DOCUMENTATION)

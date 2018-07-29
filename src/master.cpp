@@ -15,7 +15,7 @@ void CDNMaster::spawnCDN() {
   session->registry = std::make_unique<Middleware::File::FileBucketRegistry>(
         fs::current_path(), "REGISTRY");
 
-  if (!this->existing) {
+  if (!this->existing || !fs::exists("REGISTRY")) {
     std::ofstream registryFile("REGISTRY");
     registryFile << "";
   }
@@ -24,8 +24,13 @@ void CDNMaster::spawnCDN() {
   }
 };
 
-CDNMaster* CDNMasterSingleton::getInstance(bool existing) {
+CDNMaster* CDNMasterSingleton::getInstance(bool existing, bool spawn) {
   static CDNMaster instance(existing);
+
+  if (spawn && instance.session->registry == nullptr) {
+    instance.spawnCDN();
+  }
+
   return &instance;
 }
 

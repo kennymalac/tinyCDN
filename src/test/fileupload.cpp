@@ -33,11 +33,12 @@ SCENARIO("a user uploads a file to the CDN") {
       tmpFile << testValue;
     }
 
-    CDNMaster master(false);
-    master.spawnCDN();
+    auto* master = (new CDNMasterSingleton)->getInstance(false);
+    master->existing = false;
+    master->spawnCDN();
 
     auto uploadService = std::make_unique<file::FileUploadingService>(
-          master.session->registry);
+          master->session->registry);
 
 
     WHEN("the requestBucket method is invoked to obtain an available public FileBucket") {
@@ -63,7 +64,8 @@ SCENARIO("a user uploads a file to the CDN") {
             auto sf = fb->storage->lookup(fileId);
 
             REQUIRE( sf->id == fileId );
-            REQUIRE( sf->location == (master.session->registry->location / fs::path{fbId} / fileName) );
+            // TODO test situation with same filename
+            REQUIRE( sf->location == (master->session->registry->location / fs::path(fbId) / "store" / "1" / fileName) );
 
             REQUIRE( fb->storage->getAllocatedSize().size == fileSize.size );
 
@@ -83,9 +85,10 @@ SCENARIO("a user uploads a file to the CDN") {
 SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file is restarted") {
 
   GIVEN("A spawned CDNMaster and a persisted FileBucket") {
-    CDNMaster master(true);
-    master.spawnCDN();
-    auto&& fileBucket = master.session->registry->registry[0]->fileBucket.value();
+    auto* master = (new CDNMasterSingleton)->getInstance(true);
+    master->existing = true;
+    master->spawnCDN();
+    auto&& fileBucket = master->session->registry->registry[0]->fileBucket.value();
 
     // TODO test duplicate file name upload
 

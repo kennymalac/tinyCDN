@@ -105,6 +105,12 @@ public:
     case 0:
       errorLog << "loading registry file failed!";
       break;
+    case 1:
+      errorLog << "Conversion step failed to convert field";
+      break;
+    case 2:
+      errorLog << "loading from persistent state failed";
+      break;
     default:
       errorLog << "";
       break;

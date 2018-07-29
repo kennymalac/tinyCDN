@@ -9,6 +9,7 @@
 #include <fstream>
 #include <variant>
 #include <future>
+#include <cinttypes>
 
 #include "../utility.hpp"
 #include "FileStorage/filesystem.hpp"
@@ -84,17 +85,6 @@ struct FileBucketRegistryItem {
     return fieldName + "=";
   }
 
-  //! Takes a mapping of pre-serialized FileBucket fields and converts it into a single CSV which can be saved to the REGISTRY
-  inline void replaceFieldValues(std::unordered_map<std::string, std::string> fields) {
-    // ;id=ID;location=PATH;size=SIZE;types=Audio,Video,Image;
-    for (std::pair<std::string, std::string> pair : fields) {
-      auto const assignment = assignmentToken(pair.first);
-      auto const n = contents.find(assignment);
-      // example: types=AUDIO; -> types=AUDIO,VIDEO;
-      contents.replace(n + assignment.length(), contents.find(";", n), pair.second);
-    }
-  }
-
   FileBucketRegistryItem(std::unordered_map<std::string, std::string> fields);
   inline FileBucketRegistryItem(std::string contents) : contents(contents) {}
 };
@@ -144,16 +134,11 @@ struct FileBucketRegistry {
       //    std::string fileType,
       std::vector<std::string> tags);
 
-  inline FileBucketRegistry(fs::path location, std::string registryFileName)
-    : location(location), registryFileName(registryFileName) {
-    fileBucketUniqueId = static_cast<Storage::fileId>(0);
-    META = std::ofstream(this->location / "META");
-  }
-
+  FileBucketRegistry(fs::path location, std::string registryFileName);
   FileBucketRegistry(const FileBucketRegistry&) = delete;
 };
 
-//! A FileBucket CSV gets converted into this POD and subsequently this data is assigned to a FileBucket class instance
+//! A FileBucket CSV gets converted into this POD and subsequently this data is assigned to a FileBucket instance
 struct FileBucketParams {
   Storage::fileId id{0};
   uintmax_t size;

@@ -27,8 +27,11 @@ auto FileUploadingService::requestFileBucket(
 -> std::future<std::unique_ptr<FileBucket>> {
   auto fileSize = tmpFile->size;
 
+  std::ios::sync_with_stdio();
+
   // TODO If wantsOwned, determine if the user has existing FileBuckets that take these types
   if (wantsOwned) {
+    std::cout << "wantsOwned is true" << std::endl;
     try {
       auto assignedBucket = registry->findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags);
       std::promise<std::unique_ptr<FileBucket>> test;
@@ -42,6 +45,7 @@ auto FileUploadingService::requestFileBucket(
   else {
     // First remove all full FileBuckets
     std::remove_if(currentFileBuckets.begin(), currentFileBuckets.end(), [](auto const& fb) {
+      std::cout << fb->size.size << fb->storage->getAllocatedSize().size << "\n";
       return fb->size >= fb->storage->getAllocatedSize();
     });
 
@@ -57,6 +61,7 @@ auto FileUploadingService::requestFileBucket(
     });
 
     if (maybeBucket == currentFileBuckets.end()) {
+      std::cout << "No bucket available for content type: " << contentType << std::endl;
       try {
         std::promise<std::unique_ptr<FileBucket>> test;
         test.set_value(registry->findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags));
@@ -109,6 +114,11 @@ std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
   for (auto const& item : registry) {
     if (item->fileBucket.has_value()) {
       auto& fb = item->fileBucket.value();
+      std::cout << "filebucket types: ";
+      for (auto const ctype : fb->types) {
+        std::cout << ctype << ", ";
+      }
+      std::cout << std::endl;
 
 //      for (auto t : fb->types) {
 //        std::cout << t << " ";
@@ -147,6 +157,7 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
     //    std::string fileType,
     std::vector<std::string> tags) {
 
+  std::cout << "Registry creating new bucket" << std::endl;
   auto const fbId = this->getUniqueFileBucketId();
 
   // Create the bucket, create its required directories, and assign the location
@@ -310,6 +321,7 @@ void FileBucketRegistry::loadRegistry() {
   auto registryFile = this->getRegistry<std::ifstream>();
 
   auto converter = std::make_unique<FileBucketRegistryItemConverter>();
+  std::ios::sync_with_stdio();
   while (getline(registryFile, line)) {
     // std::cout << line << "\n";
     auto item = converter->convertInput(line);
@@ -329,14 +341,20 @@ void FileBucketRegistry::loadRegistry() {
 
       auto const len = n + assignment.length();
       const auto value = item->contents.substr(len, valueEnd-len);
-      // std::cout << n << " : " << valueEnd << "\n";
-      // std::cout << assignment << " : " << value << "\n";
+      std::cout << assignment << value << "\n";
+      std::cout << std::flush;
       // TODO dispatch table...
-      converter->convertField(field, value);
+      try {
+        converter->convertField(field, value);
+      }
+      catch (std::invalid_argument e) {
+        throw FileBucketRegistryException(*this, 1, std::string{"Failed to convert field "}.append(field).append(" with value ").append(value).append(" ").append(e.what()));
+      }
     }
 
     item->fileBucket = converter->convertToValue<FileBucket>();
     registry.emplace_back(std::move(item));
+    std::cout << "fb types: " << registry[0]->fileBucket.value()->types[0] << std::endl;
 
     converter->reset();
   }
@@ -347,6 +365,38 @@ Storage::fileId FileBucketRegistry::getUniqueFileBucketId() {
   // Persist incremented id to META
   META.seekp(0);
   META << fileBucketUniqueId;
+  META.flush();
   return id;
+}
+
+FileBucketRegistry::FileBucketRegistry(fs::path location, std::string registryFileName)
+  : location(location), registryFileName(registryFileName) {
+
+  if (fs::exists(this->location / "META")) {
+    try {
+      std::ifstream _meta(this->location / "META");
+      if (!_meta.is_open() || _meta.bad()) {
+        throw File::FileBucketRegistryException(*this, 2, "META file does not exist or is not available");
+      }
+
+      std::string id((std::istreambuf_iterator<char>(_meta)),
+                     std::istreambuf_iterator<char>());
+      _meta.close();
+
+      fileBucketUniqueId = static_cast<Storage::fileId>(std::stoul(id));
+    }
+    catch (std::invalid_argument e) {
+      throw File::FileBucketRegistryException(*this, 2, std::string{"META file cannot be parsed: "}.append(e.what()));
+    }
+
+    META = std::ofstream(this->location / "META");
+  }
+  else {
+    META = std::ofstream(this->location / "META");
+    fileBucketUniqueId = 0;
+    META.seekp(0);
+    META << fileBucketUniqueId;
+    META.flush();
+  }
 }
 }

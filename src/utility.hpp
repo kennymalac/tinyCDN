@@ -54,6 +54,13 @@ struct Size {
 template <typename t>
 inline std::string asCSV(t container) {
   std::string csv;
+
+  // TODO optimize
+  if (container.size() == 1) {
+    csv.append(container[0]);
+    return csv;
+  }
+
   for (auto elem : container) {
     // TODO don't cast here, use a "statusfield"
     csv.append(static_cast<std::string>(elem));

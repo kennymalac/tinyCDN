@@ -2,6 +2,7 @@
 
 #ifdef __cplusplus
 #include <experimental/filesystem>
+#include <memory>
 namespace fs = std::experimental::filesystem;
 
 #include "middlewares/file.hpp"
@@ -43,7 +44,7 @@ public:
    */
 
   //! If this CDNMaster was opened from a pre-existing REGISTRY file that was created before running the current program instance
-  const bool existing;
+  bool existing;
 
   //! Initializes the session's registry, starts the CDNMasterSession process (TODO)
   void spawnCDN();
@@ -54,7 +55,7 @@ public:
 };
 
 struct CDNMasterSingleton {
-  static CDNMaster* getInstance(bool existing = false);
+  static CDNMaster* getInstance(bool existing = false, bool spawn = false);
 };
 
 }
