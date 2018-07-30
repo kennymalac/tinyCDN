@@ -30,7 +30,6 @@ fileId FilesystemStorage::getUniqueStoreId()
 
 void FilesystemStorage::persist() {
   META.seekp(0);
-
   META << storeUniqueId << ";" << fileUniqueId << ';' << allocatedSize->size;
   META.flush();
 }
@@ -118,7 +117,6 @@ void FilesystemStorage::remove(std::unique_ptr<StoredFile> file)
 }
 
 FilesystemStorage::~FilesystemStorage() {
-
 }
 
 FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool preallocated)
@@ -172,6 +170,7 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
     }
 
     META = std::ofstream(this->location / "META");
+    persist();
 
     if (!META.is_open() || META.bad()) {
       throw File::FileStorageException(-1, "META file cannot be opened or is corrupted");

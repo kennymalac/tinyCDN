@@ -91,6 +91,7 @@ auto FileUploadingService::uploadFile(
   //    auto key = ks->generateKey();
 
   auto storedFile = bucket->storage->add(std::move(tmpFile));
+  // TODO actually make this async
   std::promise<std::tuple<Storage::fileId, std::string>> test;
 
   // Copy id and throw away unique_ptr
@@ -99,6 +100,41 @@ auto FileUploadingService::uploadFile(
 
   test.set_value({fbId, std::to_string(storedFile->id.value())});
   return test.get_future();
+}
+
+
+std::future<std::optional<std::unique_ptr<FileBucket>>> FileHostingService::obtainFileBucket(Storage::fileId fbId) {
+  // TODO const
+  // TODO actually make this async
+  std::promise<std::optional<std::unique_ptr<FileBucket>>> test;
+
+  for (auto& item : registry->registry) {
+    auto &fb = item->fileBucket;
+    if (fb.has_value() && fb.value()->id == fbId) {
+      test.set_value(std::move(fb));
+    }
+  }
+
+  test.set_value(std::make_optional<std::unique_ptr<FileBucket>>());
+  return test.get_future();
+}
+
+std::future<std::optional<std::unique_ptr<FileStorage::StoredFile>>> FileHostingService::obtainStoredFile(std::unique_ptr<FileBucket> &bucket, Storage::fileId cId) {
+  // TODO actually make this async
+  std::promise<std::optional<std::unique_ptr<FileStorage::StoredFile>>> test;
+
+  try {
+    test.set_value(std::make_optional<std::unique_ptr<FileStorage::StoredFile>>(bucket->storage->lookup(cId)));
+  }
+  catch (File::FileStorageException& e) {
+    test.set_value(std::make_optional<std::unique_ptr<FileStorage::StoredFile>>());
+  }
+
+  return test.get_future();
+}
+
+std::ifstream FileHostingService::hostFile(std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> file) {
+
 }
 
 std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
@@ -363,6 +399,7 @@ void FileBucketRegistry::loadRegistry() {
 Storage::fileId FileBucketRegistry::getUniqueFileBucketId() {
   auto const id = ++fileBucketUniqueId;
   // Persist incremented id to META
+  META.clear();
   META.seekp(0);
   META << fileBucketUniqueId;
   META.flush();
@@ -388,15 +425,15 @@ FileBucketRegistry::FileBucketRegistry(fs::path location, std::string registryFi
     catch (std::invalid_argument e) {
       throw File::FileBucketRegistryException(*this, 2, std::string{"META file cannot be parsed: "}.append(e.what()));
     }
-
-    META = std::ofstream(this->location / "META");
   }
   else {
-    META = std::ofstream(this->location / "META");
     fileBucketUniqueId = 0;
-    META.seekp(0);
-    META << fileBucketUniqueId;
-    META.flush();
   }
+
+  META = std::ofstream(this->location / "META");
+  META.seekp(0);
+  META << fileBucketUniqueId;
+  META.flush();
 }
+
 }

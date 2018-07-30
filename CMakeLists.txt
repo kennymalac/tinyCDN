@@ -48,6 +48,7 @@ set(SOURCES
 
 set(TEST_SOURCES
   src/test/fileupload.cpp
+  src/test/filehosting.cpp
   src/test/file.cpp
 )
 

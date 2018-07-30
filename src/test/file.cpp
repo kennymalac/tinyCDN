@@ -68,7 +68,6 @@ SCENARIO("A new CDN is created") {
           unsigned int counter = 0;
           auto const len = fbRegistry->registry.size();
           while (getline(registryFile, line)) {
-            // NOTE: order is backwards for registry because it prepends, not appends
             REQUIRE( line == fbRegistry->registry[counter++]->contents );
           }
 

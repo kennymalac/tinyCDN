@@ -196,6 +196,25 @@ struct FileUploadingService {
   {}
 };
 
+struct FileHostingService {
+  // Tries to obtain a FileBucket given an id
+  std::future<std::optional<std::unique_ptr<FileBucket>>> obtainFileBucket(Storage::fileId fbId);
+
+  //! Tries to obtain a StoredFile from a bucket given an id
+  std::future<std::optional<std::unique_ptr<FileStorage::StoredFile>>> obtainStoredFile(std::unique_ptr<FileBucket>& bucket, Storage::fileId cId);
+
+  //! Returns a stream to the files contents and destroys the StoredFile instance
+  std::ifstream hostFile(std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> file);
+
+  // TODO make this a mutex
+  std::unique_ptr<FileBucketRegistry>& registry;
+
+  inline FileHostingService(
+      std::unique_ptr<FileBucketRegistry>& registry)
+    : registry(registry)
+  {}
+};
+
 struct FileHostingSession {
   // auto findToken(auto token, FileType ft) {
   //   // DFS - Depth first search
