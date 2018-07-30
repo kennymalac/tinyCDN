@@ -6,6 +6,23 @@
 
 namespace TinyCDN {
 
+export "C" {
+  struct ChunkedCursor {
+    std::size_t bufferSize;
+    std::size_t seekPosition;
+    std::string_view buffer;
+    std::optional<std::ofstream> handle;
+
+    inline ChunkedCursor(std::size_t bufferSize,
+                         std::size_t seekPosition,
+                         std::ofstream handle)
+      : bufferSize(bufferSize),
+        seekPosition(seekPosition),
+        //        buffer(buffer),
+        handle(std::make_optional<std::ofstream>(handle))
+   }
+}
+
 constexpr std::size_t operator""_kB(unsigned long long v) {
   return 1024u * v;
 }

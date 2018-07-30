@@ -11,6 +11,7 @@
 #include "middlewares/file.hpp"
 
 namespace TinyCDN {
+
 auto getUploadInfo(FileUploadInfo* info) {
   std::string temporaryLocation(info->temporaryLocation);
   std::string contentType(info->contentType);
@@ -53,6 +54,7 @@ extern "C" {
     std::ios::sync_with_stdio();
     std::cout << "cc_FileUploadingSession_new" << std::endl;
 
+    // TODO don't make a new upload service - use an object pool
     session->uploadService = std::make_unique<Middleware::File::FileUploadingService>(master->getInstance(true, true)->session->registry);
 
     return session;
@@ -131,6 +133,51 @@ extern "C" {
     strcpy(cffiResult[0], fbId);
     cffiResult[1] = new char [sizeof(storedFileId)];
     strcpy(cffiResult[1], storedFileId);
+  }
+
+  std::size_t FileHostingSession::bufferSize = 128_kB;
+
+  struct FileHostingSession* cc_FileHostingSession_new () {
+    auto* master = new CDNMasterSingleton;
+    auto* session = new FileHostingSession;
+
+    std::ios::sync_with_stdio();
+    std::cout << "cc_FileHostingSession_new" << std::endl;
+
+    // TODO don't make a new upload service - use an object pool
+    session->hostingService = std::make_unique<Middleware::File::FileHostingService>(master->getInstance(true, true)->session->registry);
+
+    return session;
+  }
+
+  void cc_FileHostingSession_delete (struct FileHostingSession* session) {
+    delete reinterpret_cast<FileHostingSession*>(session);
+   }
+
+  int cc_FileHostingSession_getBucket (struct FileHostingSession* _session, int id) {
+    auto session = reinterpret_cast<FileHostingSession*>(_session);
+    std::ios::sync_with_stdio();
+    std::cout << "cc_FileHostingSession_getBucket" << std::endl;
+
+    session->bucket = session->hostingService->obtainFileBucket(id).get().value();
+
+    return static_cast<int>(session->bucket->id);
+  }
+
+  void cc_FileHostingSession_chunkFile (struct FileHostingSession* _session) {
+    auto session = reinterpret_cast<FileHostingSession*>(_session);
+    std::ios::sync_with_stdio();
+    std::cout << "cc_FileHostingSession_chunkFile" << std::endl;
+
+    session->cursor = std::make_unique<ChunkedCursor>(
+      session->bufferSize, 0,
+      session->hostingService->hostFile(std::move(session->bucket), std::move(session->hostingFile)));
+  }
+
+  char* cc_FileHostingSession_yieldChunk (struct FileHostingSession* session, char* cffiResult[]) {
+    //auto const forwardsAmount = ;
+
+    handle.seekg(static_cast<long>(session->seekPosition));
   }
 
 }
