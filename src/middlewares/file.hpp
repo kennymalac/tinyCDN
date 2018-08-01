@@ -201,10 +201,11 @@ struct FileHostingService {
   std::future<std::optional<std::unique_ptr<FileBucket>>> obtainFileBucket(Storage::fileId fbId);
 
   //! Tries to obtain a StoredFile from a bucket given an id
-  std::future<std::optional<std::unique_ptr<FileStorage::StoredFile>>> obtainStoredFile(std::unique_ptr<FileBucket>& bucket, Storage::fileId cId);
+  // Returns a tuple of the StoredFile and a boolean value that denotes if the file exists
+  std::future<std::tuple<std::optional<std::unique_ptr<FileStorage::StoredFile>>, bool>> obtainStoredFile(std::unique_ptr<FileBucket>& bucket, Storage::fileId cId, std::string fileName);
 
   //! Returns a stream to the files contents and destroys the StoredFile instance
-  std::ifstream hostFile(std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> file);
+  void hostFile(std::ifstream& stream, std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> file);
 
   // TODO make this a mutex
   std::unique_ptr<FileBucketRegistry>& registry;

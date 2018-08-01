@@ -62,12 +62,13 @@ SCENARIO("a user retrieves a file to the CDN") {
         REQUIRE( fb == nullptr );
 
         AND_WHEN("the obtainStoredFile is invoked to retrieve the StoredFile from the bucket") {
-          auto sf = hostingService->obtainStoredFile(bucket, fileId).get().value();
+          auto sf = std::get<0>(hostingService->obtainStoredFile(bucket, fileId, fileName).get()).value();
 
           REQUIRE( sf->id == storedFile->id );
 
           THEN("the hostFile method can be invoked to retrieve a stream to the file's contents") {
-            auto stream = hostingService->hostFile(std::move(bucket), std::move(storedFile));
+            std::ifstream stream;
+            hostingService->hostFile(stream, std::move(bucket), std::move(storedFile));
             //REQUIRE(typeof(std::ofstream) == typeof(stream));
 
             std::string contents((std::istreambuf_iterator<char>(stream)),

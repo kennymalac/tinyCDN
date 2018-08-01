@@ -82,10 +82,10 @@ extern "C" {
   //   return;
   // }
 
-  int cc_FileUploadingSession_getBucket (struct FileUploadingSession* _session, FileUploadInfo* info) {
+  int cc_FileUploadingSession_fetchBucket (struct FileUploadingSession* _session, FileUploadInfo* info) {
     auto session = reinterpret_cast<FileUploadingSession*>(_session);
     std::ios::sync_with_stdio();
-    std::cout << "cc_FileUploadingSession_getBucket" << std::endl;
+    std::cout << "cc_FileUploadingSession_fetchBucket" << std::endl;
 
     auto [temporaryLocation, contentType, fileType, tags, wantsOwned] = getUploadInfo(reinterpret_cast<FileUploadInfo*>(info));
 
@@ -135,8 +135,6 @@ extern "C" {
     strcpy(cffiResult[1], storedFileId);
   }
 
-  std::size_t FileHostingSession::bufferSize = 128_kB;
-
   struct FileHostingSession* cc_FileHostingSession_new () {
     auto* master = new CDNMasterSingleton;
     auto* session = new FileHostingSession;
@@ -154,32 +152,67 @@ extern "C" {
     delete reinterpret_cast<FileHostingSession*>(session);
    }
 
+  /*
+    Returns a non-0 value bucket id
+    Returns a -1 if the bucket could not be obtained
+   */
   int cc_FileHostingSession_getBucket (struct FileHostingSession* _session, int id) {
     auto session = reinterpret_cast<FileHostingSession*>(_session);
     std::ios::sync_with_stdio();
     std::cout << "cc_FileHostingSession_getBucket" << std::endl;
 
-    session->bucket = session->hostingService->obtainFileBucket(id).get().value();
+    auto maybeBucket = session->hostingService->obtainFileBucket(id).get();
 
+    if (!maybeBucket.has_value()) {
+      return -1;
+    }
+
+    session->bucket = std::move(maybeBucket.value());
     return static_cast<int>(session->bucket->id);
   }
 
-  void cc_FileHostingSession_chunkFile (struct FileHostingSession* _session) {
+  /*!
+    Returns a 1 for if the file was successfully obtained
+    Returns a 0 if the file could not be obtained
+    Returns a -1 if the file exists, but the file cannot be obtained, possibly because the filename was incorrect
+  */
+  int cc_FileHostingSession_getContentFile (struct FileHostingSession* _session, struct HostedFileInfo* info) {
+    auto session = reinterpret_cast<FileHostingSession*>(_session);
+
+    // NOTE: the session's bucket afterwards
+    auto [maybeStoredFile, exists] = session->hostingService->
+      obtainStoredFile(session->bucket,
+                       info->id,
+                       info->fileName).get();
+
+    if (maybeStoredFile.has_value()) {
+      session->hostingFile = std::move(maybeStoredFile.value());
+      return 1;
+    }
+    else if (exists) {
+      return -1;
+    }
+    return 0;
+  }
+
+  void cc_FileHostingSession_getChunkingHandle (struct FileHostingSession* _session) {
     auto session = reinterpret_cast<FileHostingSession*>(_session);
     std::ios::sync_with_stdio();
     std::cout << "cc_FileHostingSession_chunkFile" << std::endl;
 
     session->cursor = std::make_unique<ChunkedCursor>(
-      session->bufferSize, 0,
-      session->hostingService->hostFile(std::move(session->bucket), std::move(session->hostingFile)));
+      256_kB,
+      0,
+      [&session](std::ifstream& stream) {
+        session->hostingService->hostFile(
+          stream,
+          std::move(session->bucket),
+          std::move(session->hostingFile));
+      });
   }
 
-  char* cc_FileHostingSession_yieldChunk (struct FileHostingSession* session, char* cffiResult[]) {
-    //auto const forwardsAmount = ;
-
-    handle.seekg(static_cast<long>(session->seekPosition));
+  void cc_FileHostingSession_yieldChunk (struct FileHostingSession* session, char* cffiResult[]) {
   }
-
 }
 }
 #endif

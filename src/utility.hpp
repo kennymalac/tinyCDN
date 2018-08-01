@@ -3,24 +3,36 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <fstream>
+#include <functional>
 
 namespace TinyCDN {
 
-export "C" {
+extern "C" {
   struct ChunkedCursor {
     std::size_t bufferSize;
     std::size_t seekPosition;
     std::string_view buffer;
-    std::optional<std::ofstream> handle;
+    std::ifstream handle;
+
+    inline ChunkedCursor(std::size_t bufferSize,
+                         std::size_t seekPosition)
+      : bufferSize(bufferSize),
+        seekPosition(seekPosition) {}
 
     inline ChunkedCursor(std::size_t bufferSize,
                          std::size_t seekPosition,
-                         std::ofstream handle)
+                         std::function<void(std::ifstream&)> setupStream)
       : bufferSize(bufferSize),
-        seekPosition(seekPosition),
-        //        buffer(buffer),
-        handle(std::make_optional<std::ofstream>(handle))
-   }
+        seekPosition(seekPosition) {
+      setupStream(handle);
+    }
+
+    ~ChunkedCursor();
+
+    void prevChunk();
+    void nextChunk();
+  };
 }
 
 constexpr std::size_t operator""_kB(unsigned long long v) {

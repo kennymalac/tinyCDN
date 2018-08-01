@@ -6,6 +6,19 @@
 #include "utility.hpp"
 
 namespace TinyCDN {
+  extern "C" {
+    ChunkedCursor::~ChunkedCursor() {
+      handle.close();
+    }
+
+    void ChunkedCursor::prevChunk() {
+      // TODO
+      handle.seekg(static_cast<long>(seekPosition));
+    }
+    void ChunkedCursor::nextChunk() {
+      // TODO
+    }
+  }
 
 std::vector<std::string> fromCSV(std::string csv) {
   std::vector<std::string> values;

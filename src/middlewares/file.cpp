@@ -119,21 +119,31 @@ std::future<std::optional<std::unique_ptr<FileBucket>>> FileHostingService::obta
   return test.get_future();
 }
 
-std::future<std::optional<std::unique_ptr<FileStorage::StoredFile>>> FileHostingService::obtainStoredFile(std::unique_ptr<FileBucket> &bucket, Storage::fileId cId) {
+std::future<std::tuple<std::optional<std::unique_ptr<FileStorage::StoredFile>>, bool>> FileHostingService::obtainStoredFile(std::unique_ptr<FileBucket> &bucket, Storage::fileId cId, std::string fileName) {
   // TODO actually make this async
-  std::promise<std::optional<std::unique_ptr<FileStorage::StoredFile>>> test;
+  std::promise<std::tuple<std::optional<std::unique_ptr<FileStorage::StoredFile>>, bool>> test;
+
+  std::optional<std::unique_ptr<FileStorage::StoredFile>> maybeFile;
+  auto exists = false;
 
   try {
-    test.set_value(std::make_optional<std::unique_ptr<FileStorage::StoredFile>>(bucket->storage->lookup(cId)));
+    auto storedFile = bucket->storage->lookup(cId);
+    exists = true;
+
+    if (storedFile->location.filename() == fileName) {
+      maybeFile = std::move(storedFile);
+    }
   }
   catch (File::FileStorageException& e) {
-    test.set_value(std::make_optional<std::unique_ptr<FileStorage::StoredFile>>());
+    std::ios::sync_with_stdio();
+    std::cout << e.what() << std::endl;
   }
 
+  test.set_value(std::make_tuple(std::move(maybeFile), exists));
   return test.get_future();
 }
 
-std::ifstream FileHostingService::hostFile(std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> file) {
+void FileHostingService::hostFile(std::ifstream& stream, std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> file) {
 
 }
 
