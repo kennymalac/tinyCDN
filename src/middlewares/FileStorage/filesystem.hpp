@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+#include <mutex>
 #include "storage.hpp"
 #include "storedfile.hpp"
 
@@ -12,10 +14,16 @@ private:
   //! Saves META properties
   void persist();
 
-protected:
+  mutable std::mutex mutex;
+
   std::atomic<fileId> storeUniqueId;
+  //std::map<fileId, std::unique_ptr<std::mutex>> storeMutexes;
+  std::map<fileId, std::shared_mutex> storeMutexes;
   //! Once the store reaches this amount of files, another folder will get created
   static const int storeFileThreshold;
+
+  //std::map<fileId, std::unique_ptr<std::shared_mutex>> fileMutexes;
+  std::map<fileId, std::shared_mutex> fileMutexes;
 
   fileId getUniqueStoreId();
   fileId getUniqueFileId();

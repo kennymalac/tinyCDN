@@ -10,6 +10,7 @@ const int FilesystemStorage::storeFileThreshold = 1000;
 fileId FilesystemStorage::getUniqueFileId()
 {
   auto const id = ++fileUniqueId;
+
   // Persist incremented id to META
   persist();
   return id;
@@ -54,9 +55,12 @@ void FilesystemStorage::destroy()
 // cdn-website.com/<bucket_id>/<file_id>/file.jpg
 std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
 {
+  // auto search = fileMutexes.find(id);
+  auto lock = std::make_unique<std::shared_lock<std::shared_mutex>>(fileMutexes[id]);
+
   try {
     auto stFile = std::make_unique<StoredFile>(
-          fs::read_symlink(this->location / this->linkDirName / std::to_string(id)), false);
+      fs::read_symlink(this->location / this->linkDirName / std::to_string(id)), false, std::move(lock));
 
     stFile->id = id;
     return stFile;
@@ -68,12 +72,18 @@ std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
 
 std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> file)
 {
+  std::unique_lock<std::mutex> storageLock(mutex);
   allocatedSize = std::make_unique<Size>(allocatedSize->size + file->size.size);
 
   auto const assignedId = getUniqueFileId();
+
   file->id = assignedId;
 
-  auto assignedLocation = this->location / "store" / fs::path(std::to_string(storeUniqueId)) / file->location.filename();
+  auto assignedStoreId = storeUniqueId.load();
+
+  std::unique_lock<std::shared_mutex> storeLock(storeMutexes[assignedStoreId]);
+
+  auto assignedLocation = this->location / "store" / fs::path(std::to_string(assignedStoreId)) / file->location.filename();
 
   std::ios::sync_with_stdio();
   std::cout << "FileSystemStorage::add assignedLocation: " << assignedLocation << std::endl;
@@ -81,13 +91,31 @@ std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> f
   if (fs::exists(assignedLocation)) {
     // The likelihood that a file in a separate would have the same filename is very low, so just create a new store folder for now
     // TODO reuse existing stores, don't always create new ones in this situation
-    auto const newStoreId = getUniqueStoreId();
-    assignedLocation = this->location / "store" / fs::path(std::to_string(newStoreId)) / file->location.filename();
+    assignedStoreId = getUniqueStoreId();
+
+    assignedLocation = this->location / "store" / fs::path(std::to_string(assignedStoreId)) / file->location.filename();
   }
+
+  // No mutations on the storage instance's properties will be made following this
+  storageLock.unlock();
+
+  {
+    std::ofstream stream(assignedLocation);
+    if (!stream.is_open() || stream.bad()) {
+      storageLock.lock();
+      allocatedSize = std::make_unique<Size>(allocatedSize->size - file->size.size);
+      storageLock.unlock();
+      storeLock.unlock();
+      throw File::FileStorageException(0, "Temporary file could not be created for StoredFile in specified location", *file);
+    }
+  }
+  // Uniqueness of filename in this directory is now guaranteed, so unlock this
+  storeLock.unlock();
+
   // std::cout << "location: " << file->location << "\n";
   // std::cout << "assignedLocation: " << assignedLocation << "\n";
 
-  fs::copy(file->location, assignedLocation);
+  fs::copy(file->location, assignedLocation, fs::copy_options::overwrite_existing);
   fs::remove(file->location);
 
   // Create a link that points to this file
@@ -104,6 +132,8 @@ void FilesystemStorage::remove(std::unique_ptr<StoredFile> file)
   if (!file->id.has_value()) {
     throw File::FileStorageException(0, "StoredFile file has no id", std::make_optional<StoredFile>(*file));
   }
+
+  std::unique_lock<std::mutex> storageLock(mutex);
 
   fs::remove(this->location / this->linkDirName / std::to_string(file->id.value()));
 

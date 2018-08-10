@@ -12,7 +12,7 @@ void CDNMaster::spawnCDN() {
   // test
   std::cout << "spawning master, existing: " << this->existing << " " << "\n";
   // initialize a first-time registry
-  session->registry = std::make_unique<Middleware::File::FileBucketRegistry>(
+  session->registry = std::make_shared<Middleware::File::FileBucketRegistry>(
         fs::current_path(), "REGISTRY");
 
   if (!this->existing || !fs::exists("REGISTRY")) {

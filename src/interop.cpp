@@ -89,7 +89,10 @@ extern "C" {
 
     auto [temporaryLocation, contentType, fileType, tags, wantsOwned] = getUploadInfo(reinterpret_cast<FileUploadInfo*>(info));
 
-    session->uploadingFile = std::make_unique<Middleware::FileStorage::StoredFile>(temporaryLocation, true);
+    session->uploadingFile = std::make_unique<Middleware::FileStorage::StoredFile>(
+      temporaryLocation,
+      true,
+      std::make_unique<std::unique_lock<std::shared_mutex>>(session->uploadingFileMutex));
 
     session->bucket = session->uploadService->requestFileBucket(session->uploadingFile, contentType, fileType, tags, wantsOwned).get();
 
@@ -161,13 +164,14 @@ extern "C" {
     std::ios::sync_with_stdio();
     std::cout << "cc_FileHostingSession_getBucket" << std::endl;
 
-    auto maybeBucket = session->hostingService->obtainFileBucket(id).get();
+    auto [maybeBucket, maybeItem] = session->hostingService->obtainFileBucket(id).get();
 
-    if (!maybeBucket.has_value()) {
+    if (!maybeBucket.has_value() || !maybeItem.has_value()) {
       return -1;
     }
 
     session->bucket = std::move(maybeBucket.value());
+    session->registryItem = maybeItem.value();
     return static_cast<int>(session->bucket->id);
   }
 
@@ -206,8 +210,9 @@ extern "C" {
       [&session](std::ifstream& stream) {
         session->hostingService->hostFile(
           stream,
+          std::move(session->hostingFile),
           std::move(session->bucket),
-          std::move(session->hostingFile));
+          session->registryItem);
       });
   }
 

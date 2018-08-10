@@ -48,7 +48,7 @@ void FileHostingSession_yieldChunk (struct FileHostingSession* session, char* cf
 };
 
 
-int main() {
+void testUpload() {
   struct FileUploadingSession* session = FileUploadingSession_new();
   char* cffiResult[100];
   char* tags = {"tag"};
@@ -61,4 +61,8 @@ int main() {
   FileUploadingSession_finishFileUpload(session, cffiResult, info);
 
   printf("%d", bucketId);
+}
+
+int main() {
+  testUpload();
 }

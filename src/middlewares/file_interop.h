@@ -2,6 +2,7 @@
 #ifdef __cplusplus
 #include <string.h>
 #include <optional>
+#include <mutex>
 #include <memory>
 #include "file.hpp"
 #include "src/utility.hpp"
@@ -14,10 +15,12 @@ extern "C" {
   struct FileUploadingSession {
     std::unique_ptr<Middleware::File::FileBucket> bucket;
     std::unique_ptr<Middleware::FileStorage::StoredFile> uploadingFile;
+    std::shared_mutex uploadingFileMutex;
     std::unique_ptr<Middleware::File::FileUploadingService> uploadService;
   };
   struct FileHostingSession {
     std::unique_ptr<Middleware::File::FileBucket> bucket;
+    std::shared_ptr<Middleware::File::FileBucketRegistryItem> registryItem;
     std::unique_ptr<Middleware::FileStorage::StoredFile> hostingFile;
     std::unique_ptr<Middleware::File::FileHostingService> hostingService;
 

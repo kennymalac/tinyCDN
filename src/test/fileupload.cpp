@@ -48,7 +48,8 @@ SCENARIO("a user uploads a file to the CDN") {
       auto tags = std::vector<std::string>{"test"};
       auto fileSize = Size{fs::file_size(fileName)};
 
-      auto storedFile = std::make_unique<storage::StoredFile>(fileSize, fileName, true);
+      std::shared_mutex uploadingFileMutex;
+      auto storedFile = std::make_unique<storage::StoredFile>(fileSize, fileName, true, std::make_unique<std::unique_lock<std::shared_mutex>>(uploadingFileMutex));
       auto bucket = uploadService->requestFileBucket(storedFile, ctype, ftype, tags, false).get();
 
       THEN("An empty bucket is retrieved") {
@@ -60,7 +61,7 @@ SCENARIO("a user uploads a file to the CDN") {
 
           THEN("the file can be retrieved and the allocatedSize was increased") {
             // TODO get bucket from fbId
-            auto&& fb = uploadService->currentFileBuckets[0];
+            auto&& fb = master->session->registry->currentFileBuckets[0];
             auto sf = fb->storage->lookup(fileId);
 
             REQUIRE( sf->id == fileId );
@@ -105,9 +106,7 @@ SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file is rest
         REQUIRE( fileContents == testValue );
 
         AND_WHEN("an uploaded file is removed") {
-          // NOTE: when adding multithreading, address possible race condition if file is being fetched before delete?
           storage::fileId const fileId = 1;
-          auto storedFile = fileBucket->storage->lookup(static_cast<storage::fileId>(1));
           fileBucket->storage->remove(std::move(storedFile));
 
           THEN("The storedFile is no longer in scope, the allocatedSize was decreased, and a lookup fails") {

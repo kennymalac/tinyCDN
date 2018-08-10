@@ -12,6 +12,7 @@
 namespace TinyCDN::Middleware::File {
 struct FileBucket;
 struct FileBucketRegistry;
+struct FileBucketRegistryItem;
 
 namespace Storage = TinyCDN::Middleware::FileStorage;
 
@@ -26,6 +27,7 @@ inline void logStoredFile(const std::optional<Storage::StoredFile>& maybeStoredF
 class FileStorageException : public std::runtime_error {
 public:
 
+  FileStorageException(int code, std::string explanation, const Storage::StoredFile storedFile);
   FileStorageException(int code, std::string explanation, const std::optional<Storage::StoredFile> storedFile);
   FileStorageException(int code, std::string explanation);
 
@@ -34,6 +36,7 @@ public:
 
     errorLog << std::runtime_error::what() << ": ";
 
+    // TODO make this an enum
     switch (code) {
     case 0:
       errorLog << "invalid StoredFile location or broken file: \n";
@@ -48,6 +51,8 @@ public:
     case 3:
       errorLog << "Allocation step failed";
       break;
+    case 4:
+      errorLog << "improper StoredFile access: \n";
     default:
       errorLog << "";
       break;
@@ -91,6 +96,35 @@ private:
   const FileBucket& fileBucket;
 };
 
+
+class FileBucketRegistryItemException : public std::runtime_error {
+public:
+
+  FileBucketRegistryItemException(const FileBucketRegistryItem &fbri, int code, std::string explanation);
+
+  virtual const char* what() {
+    std::ostringstream errorLog;
+
+    errorLog << std::runtime_error::what() << ": ";
+
+    switch (code) {
+    case 1:
+      errorLog << "Conversion step failed to convert field";
+      break;
+    default:
+      errorLog << "";
+      break;
+    }
+
+    return errorLog.str().c_str();
+  }
+
+private:
+  int code;
+  const FileBucketRegistryItem& item;
+
+};
+
 class FileBucketRegistryException : public std::runtime_error {
 public:
 
@@ -104,9 +138,6 @@ public:
     switch (code) {
     case 0:
       errorLog << "loading registry file failed!";
-      break;
-    case 1:
-      errorLog << "Conversion step failed to convert field";
       break;
     case 2:
       errorLog << "loading from persistent state failed";

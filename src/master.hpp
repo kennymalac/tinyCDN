@@ -13,7 +13,7 @@ namespace TinyCDN {
 
 //! Currently only holds a pointer to the FileBucketRegistry which contains information about all initiated FileBuckets.
 struct CDNMasterSession {
-  std::unique_ptr<Middleware::File::FileBucketRegistry> registry;
+  std::shared_ptr<Middleware::File::FileBucketRegistry> registry;
 
   //SessionProvisioner session;
 

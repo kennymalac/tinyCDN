@@ -9,6 +9,8 @@
 #include <fstream>
 #include <variant>
 #include <future>
+#include <mutex>
+#include <shared_mutex>
 #include <cinttypes>
 
 #include "../utility.hpp"
@@ -72,6 +74,8 @@ struct FileBucket {
   FileBucket(Storage::fileId id, Size size, fs::path location, std::vector<std::string> types);
 };
 
+struct FileBucketRegistryItemConverter;
+
 //! A container representing a FileBucket's persistent state as stored in the FileBucketRegistry
 struct FileBucketRegistryItem {
   //! The FileBucket serialized as a CSV
@@ -80,12 +84,22 @@ struct FileBucketRegistryItem {
   //! A reference to the registry item's bucket that was resolved from this item's persisted state
   std::optional<std::unique_ptr<FileBucket>> fileBucket;
 
+  //! Converts a FileBucketRegistryItem into a FileBucket instance
+  std::unique_ptr<FileBucket> convert(std::unique_ptr<FileBucketRegistryItemConverter>& converter);
+
+  //! Safely obtains a unique_ptr to a FileBucket with the specified lock
+  template <typename LockType>
+  std::unique_ptr<FileBucket>& getBucket(std::shared_mutex& mutex);
+
   //! Convenience helper method for generating fieldName=
   inline std::string assignmentToken(std::string fieldName) {
     return fieldName + "=";
   }
 
   FileBucketRegistryItem(std::unordered_map<std::string, std::string> fields);
+  inline FileBucketRegistryItem(const FileBucketRegistryItem& i)
+    : contents(i.contents) {};
+
   inline FileBucketRegistryItem(std::string contents) : contents(contents) {}
 };
 
@@ -95,14 +109,34 @@ struct FileBucketRegistryItem {
  * The FileBucket creation or modification procedure should trigger an update to FileBucketRegistry to persist its creation/modification into the CDN's shared state.
  * Eventually the REGISTRY will have to live in several files due to the fact that this data structure is inefficient for a large amount of FileBucket creations, modifications, and deletions.
  */
-struct FileBucketRegistry {
-  fs::path location;
-  std::string registryFileName;
+class FileBucketRegistry {
+private:
   std::ofstream META;
   std::atomic<Storage::fileId> fileBucketUniqueId;
-  Size defaultBucketSize{2_mB};
-  std::vector<std::unique_ptr<FileBucketRegistryItem>> registry;
 
+public:
+  const std::string registryFileName;
+  mutable std::shared_mutex mutex;
+
+  std::vector<std::shared_ptr<FileBucketRegistryItem>> registry;
+
+  //! FileBuckets are used as unique_ptrs with cloning capabilities - all FileBucket instances act on the same mutexes as to prevent locks and data races
+  std::map<int, std::shared_mutex> bucketMutexes;
+
+  //! "active" public FileBuckets that reside in memory until full
+  std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
+
+  fs::path location;
+  Size defaultBucketSize{2_mB};
+
+  // std::vector<std::shared_mutex> registryMutexes;
+
+  // template <typename LockType>
+  // getRegistryItem(int index) {
+  //   LockType lock(registry[i]->mutex);
+  // }
+
+  std::optional<std::shared_ptr<FileBucketRegistryItem>> getItem(Storage::fileId fbId);
   /*!
    * \brief registerItem converts an assumingly newly-created FileBucket and appends its configuration as a FileBucketRegistryItem into REGISTRY
    * \param fb a FileBucket instance
@@ -111,8 +145,10 @@ struct FileBucketRegistry {
   Storage::fileId getUniqueFileBucketId();
 
   //! Safely returns a stream handle for the Registry
+  // TODO: implement registry as a ring buffer
   template <typename StreamType>
   StreamType getRegistry();
+
 
   //!
   void loadRegistry();
@@ -135,7 +171,10 @@ struct FileBucketRegistry {
       std::vector<std::string> tags);
 
   FileBucketRegistry(fs::path location, std::string registryFileName);
-  FileBucketRegistry(const FileBucketRegistry&) = delete;
+  inline FileBucketRegistry(const FileBucketRegistry& r, std::shared_lock<std::shared_mutex> lock)
+    : location(r.location), fileBucketUniqueId(r.fileBucketUniqueId.load()), defaultBucketSize(r.defaultBucketSize), registry(r.registry) {};
+
+  inline FileBucketRegistry(const FileBucketRegistry& r) : FileBucketRegistry(r, std::shared_lock<std::shared_mutex>(r.mutex)) {};
 };
 
 //! A FileBucket CSV gets converted into this POD and subsequently this data is assigned to a FileBucket instance
@@ -177,63 +216,42 @@ struct FileBucketRegistryItemConverter {
 
 // typedef FileBucket<BLAKEKey> BLAKEBucket;
 
-struct FileUploadingService {
+class FileUploadingService {
+private:
+  std::shared_ptr<FileBucketRegistry> registry;
+
+public:
   std::future<std::unique_ptr<FileBucket>> requestFileBucket(std::unique_ptr<FileStorage::StoredFile>& tmpFile, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
 
   std::future<std::tuple<Storage::fileId, std::string>> uploadFile (std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> tmpFile, std::string contentType, std::string fileType, std::vector<std::string> tags);
 
-  // TODO make this a mutex
-  std::unique_ptr<FileBucketRegistry>& registry;
   // StatusField
-
-  // TODO active buckets should be on REGISTRY lookup table - not uploading session
-  //! "active" public FileBuckets that reside in memory until full
-  std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
-
   inline FileUploadingService(
-      std::unique_ptr<FileBucketRegistry>& registry)
+      std::shared_ptr<FileBucketRegistry> registry)
     : registry(registry)
   {}
 };
 
-struct FileHostingService {
+class FileHostingService {
+private:
+  std::shared_ptr<FileBucketRegistry> registry;
+
+public:
   // Tries to obtain a FileBucket given an id
-  std::future<std::optional<std::unique_ptr<FileBucket>>> obtainFileBucket(Storage::fileId fbId);
+  std::future<std::tuple<std::optional<std::unique_ptr<FileBucket>>, std::optional<std::shared_ptr<FileBucketRegistryItem>>>> obtainFileBucket(Storage::fileId fbId);
 
   //! Tries to obtain a StoredFile from a bucket given an id
   // Returns a tuple of the StoredFile and a boolean value that denotes if the file exists
   std::future<std::tuple<std::optional<std::unique_ptr<FileStorage::StoredFile>>, bool>> obtainStoredFile(std::unique_ptr<FileBucket>& bucket, Storage::fileId cId, std::string fileName);
 
-  //! Returns a stream to the files contents and destroys the StoredFile instance
-  void hostFile(std::ifstream& stream, std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> file);
-
-  // TODO make this a mutex
-  std::unique_ptr<FileBucketRegistry>& registry;
+  //! Safely obtains a stream to the files contents and destroys the StoredFile instance, readds the bucket to the registry, returns the bucket id
+  int hostFile(std::ifstream& stream, std::unique_ptr<FileStorage::StoredFile> file, std::unique_ptr<FileBucket> bucket, std::shared_ptr<FileBucketRegistryItem>& item);
 
   inline FileHostingService(
-      std::unique_ptr<FileBucketRegistry>& registry)
+      std::shared_ptr<FileBucketRegistry> registry)
     : registry(registry)
   {}
 };
-
-struct FileHostingSession {
-  // auto findToken(auto token, FileType ft) {
-  //   // DFS - Depth first search
-  //   for (directory)
-  //   ->doesStore
-  // }
-
-  FileHostingSession (int threadCount) {
-    // TODO decide thread pool
-    // thread_pool<threadCount> availThreads;
-  }
-
-  ~FileHostingSession () {
-    // delete all buckets
-    // save buckets to session storen
-  }
-};
-
 }
 
 // this should be a concept

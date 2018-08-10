@@ -55,7 +55,9 @@ SCENARIO("A new CDN is created") {
 
           file::FileBucketRegistryItemConverter converter;
           for (unsigned int i = 0; i < static_cast<unsigned int>(fileBuckets.size()); i++) {
-            auto const& registryItem = master->session->registry->registry[i];
+            // Acquire the registry item
+            auto registryItem = fbRegistry->registry[i];
+
             auto const clonedItem = converter.convertInput(registryItem->contents);
             REQUIRE( registryItem->contents == clonedItem->contents );
           }
@@ -63,7 +65,7 @@ SCENARIO("A new CDN is created") {
           REQUIRE(fs::is_empty(fs::path{"REGISTRY"}) == false);
 
           std::string line;
-          std::ifstream registryFile(fbRegistry->location / fbRegistry->registryFileName);
+          auto registryFile = fbRegistry->getRegistry<std::ifstream>();
 
           unsigned int counter = 0;
           auto const len = fbRegistry->registry.size();
@@ -105,7 +107,7 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
         for (unsigned int i = 0; i < static_cast<unsigned int>(fbArgs.size()); i++) {
           auto const fbArg = fbArgs[i];
-          auto const& bucket = std::apply(findBucket, fbArg);
+          auto bucket = std::apply(findBucket, fbArg);
           auto const& registryItem = fbRegistry->registry[i];
           std::cout << "registryItem: " << registryItem->contents << "\n";
 
@@ -126,13 +128,16 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
           // Test FileBucket storage
           REQUIRE( bucket->storage->getAllocatedSize().size == Size{0_kB}.size );
 
-          // Tear down filebucket
-          bucket->storage->destroy();
+          // Tear down filebucket later
+          master->session->registry->registry[i]->fileBucket = std::move(bucket);
         }
       }
     }
 
     // Tear down
+    for (auto item : master->session->registry->registry) {
+      item->fileBucket.value()->storage->destroy();
+    }
     fs::remove("REGISTRY");
     fs::remove("META");
   }
