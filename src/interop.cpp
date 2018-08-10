@@ -1,6 +1,7 @@
 #ifdef __cplusplus
 #include "middlewares/file_interop.h"
 #include "master.hpp"
+#include "services.hpp"
 
 #include <stdio.h>
 #include <string.h>
@@ -54,12 +55,13 @@ extern "C" {
     std::ios::sync_with_stdio();
     std::cout << "cc_FileUploadingSession_new" << std::endl;
 
-    // TODO don't make a new upload service - use an object pool
-    session->uploadService = std::make_unique<Middleware::File::FileUploadingService>(master->getInstance(true, true)->session->registry);
+    // TODO don't use a singleton - use an object pool
+    auto* service = new FileUploadingServiceSingleton;
+    session->uploadService = service->getInstance(master->getInstance(true, true)->session->registry);
 
     return session;
   }
- 
+
  // FileUploadingSession* requestFileUploadingSession (SessionProvisioner* master) {
   //   return reinterpret_cast<SessionProvisioner*>(master)->getUploadingSession();
   // }
@@ -145,8 +147,9 @@ extern "C" {
     std::ios::sync_with_stdio();
     std::cout << "cc_FileHostingSession_new" << std::endl;
 
-    // TODO don't make a new upload service - use an object pool
-    session->hostingService = std::make_unique<Middleware::File::FileHostingService>(master->getInstance(true, true)->session->registry);
+    // TODO don't use a singleton - use an object pool
+    auto* service = new FileHostingServiceSingleton;
+    session->hostingService = service->getInstance(master->getInstance(true, true)->session->registry);
 
     return session;
   }

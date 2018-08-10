@@ -42,6 +42,8 @@ set(SOURCES
   src/middlewares/FileStorage/filesystem.cpp
   src/master.hpp
   src/master.cpp
+  src/services.hpp
+  src/services.cpp
   src/middlewares/file_interop.h
   src/interop.cpp
 )
