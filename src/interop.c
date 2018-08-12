@@ -1,5 +1,7 @@
 #include "middlewares/file_interop.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 struct FileUploadInfo* FileUploadInfo_new (char* temporaryLocation,
                                            char* contentType,
@@ -7,6 +9,12 @@ struct FileUploadInfo* FileUploadInfo_new (char* temporaryLocation,
                                            char* tags,
                                            int wantsOwned) {
   return cc_FileUploadInfo_new(temporaryLocation, contentType, fileType, tags, wantsOwned);
+};
+
+struct HostedFileInfo* HostedFileInfo_new (int id,
+                                           char* fName,
+                                           int owned) {
+  return cc_HostedFileInfo_new(id, fName, owned);
 };
 
 struct FileUploadingSession* FileUploadingSession_new () {
@@ -43,12 +51,12 @@ void FileHostingSession_getChunkingHandle (struct FileHostingSession* session) {
   cc_FileHostingSession_getChunkingHandle(session);
 };
 
-void FileHostingSession_yieldChunk (struct FileHostingSession* session, char* cffiResult[]) {
-  cc_FileHostingSession_yieldChunk(session, cffiResult);
+int FileHostingSession_yieldChunk (struct FileHostingSession* session, unsigned char* cffiResult) {
+  return cc_FileHostingSession_yieldChunk(session, cffiResult);
 };
 
 
-void testUpload() {
+void testUpload(int arr[2]) {
   struct FileUploadingSession* session = FileUploadingSession_new();
   char* cffiResult[100];
   char* tags = {"tag"};
@@ -61,8 +69,43 @@ void testUpload() {
   FileUploadingSession_finishFileUpload(session, cffiResult, info);
 
   printf("%d", bucketId);
+  FileUploadingSession_delete(session);
+
+  arr[0] = atoi(cffiResult[0]);
+  arr[1] = atoi(cffiResult[1]);
+}
+
+void testHost(int bucketId, int fileId) {
+  printf("bucketId: %d | fileId: %d", bucketId, fileId);
+  fflush(stdout);
+  struct FileHostingSession* session = FileHostingSession_new();
+
+  struct HostedFileInfo* info = HostedFileInfo_new (fileId, "aloepizza.jpg", 0);
+
+  FileHostingSession_getBucket(session, bucketId);
+  FileHostingSession_getContentFile(session, info);
+  FileHostingSession_getChunkingHandle(session);
+
+  unsigned char buffer[32768+10390];
+  int shouldContinue = FileHostingSession_yieldChunk(session, buffer);
+  printf("should continue?: %d", shouldContinue);
+
+  unsigned char buffer2[10390];
+  int shouldContinue2 = FileHostingSession_yieldChunk(session, buffer2);
+  printf("should continue 2?: %d", shouldContinue2);
+
+  memcpy(buffer+32768, buffer2, 10390);
+
+  // Output copy to file
+  FILE* test = fopen("test.jpg", "wb");
+  fwrite(&buffer, sizeof(buffer[0]), sizeof(buffer)/sizeof(buffer[0]), test);
+  fclose(test);
+
+  FileHostingSession_delete(session);
 }
 
 int main() {
-  testUpload();
+  int cffiResult[2];
+  testUpload(cffiResult);
+  testHost(cffiResult[0], cffiResult[1]);
 }

@@ -100,7 +100,7 @@ SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file is rest
       THEN("the FileBucket storage is still the same allocatedSize, the StoredFile id is the same, the StoredFile is readable") {
         REQUIRE( fileBucket->storage->getAllocatedSize().size == fs::file_size(storedFile->location) );
         REQUIRE( storedFile->id == fileId );
-        std::ifstream storedFileIn(storedFile->location);
+        auto storedFileIn = storedFile->getStream<std::ifstream>();
         std::string fileContents((std::istreambuf_iterator<char>(storedFileIn)),
                                  std::istreambuf_iterator<char>());
         REQUIRE( fileContents == testValue );

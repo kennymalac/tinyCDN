@@ -33,7 +33,7 @@ StreamType StoredFile::getStream() {}
 
 template<>
 std::ifstream StoredFile::getStream() {
-  std::ifstream stream(this->location);
+  std::ifstream stream(this->location, std::ios::in | std::ios::binary);
   if (!stream.is_open() || stream.bad()) {
     std::string explanation{"Reading input stream failed in getStream()"};
     throw File::FileStorageException(0, explanation, *this);

@@ -73,7 +73,7 @@ typedef struct ChunkedCursor ChunkedCursor;
                           int owned = 0)
       : id(id), owned(owned) {
       fileName = new char[strlen(fName)+1];
-      strcpy(fName, fName);
+      strcpy(fileName, fName);
     }
 #endif
   };
@@ -83,6 +83,10 @@ typedef struct ChunkedCursor ChunkedCursor;
                                              char* fileType,
                                              char* tags,
                                              int wantsOwned);
+
+  struct HostedFileInfo* HostedFileInfo_new (int id,
+                                             char* fName,
+                                             int owned);
 
   struct FileUploadingSession* FileUploadingSession_new ();
   void FileUploadingSession_delete (struct FileUploadingSession* session);
@@ -94,7 +98,7 @@ typedef struct ChunkedCursor ChunkedCursor;
   int FileHostingSession_getBucket (struct FileHostingSession* session, int id);
   int FileHostingSession_getContentFile (struct FileHostingSession* _session, struct HostedFileInfo* info);
   void FileHostingSession_getChunkingHandle (struct FileHostingSession* session);
-  void FileHostingSession_yieldChunk (struct FileHostingSession* session, char* cffiResult[]);
+  int FileHostingSession_yieldChunk (struct FileHostingSession* session, unsigned char* cffiResult);
 
   // C++ functions
   struct FileUploadInfo* cc_FileUploadInfo_new (char* temporaryLocation,
@@ -102,6 +106,10 @@ typedef struct ChunkedCursor ChunkedCursor;
                                                 char* fileType,
                                                 char* tags,
                                                 int wantsOwned);
+
+  struct HostedFileInfo* cc_HostedFileInfo_new (int id,
+                                                char* fName,
+                                                int owned);
 
   struct FileUploadingSession* cc_FileUploadingSession_new ();
   void cc_FileUploadingSession_delete (struct FileUploadingSession* session);
@@ -113,7 +121,7 @@ typedef struct ChunkedCursor ChunkedCursor;
   int cc_FileHostingSession_getBucket (struct FileHostingSession* session, int id);
   int cc_FileHostingSession_getContentFile (struct FileHostingSession* _session, struct HostedFileInfo* info);
   void cc_FileHostingSession_getChunkingHandle (struct FileHostingSession* session);
-  void cc_FileHostingSession_yieldChunk (struct FileHostingSession* session, char* cffiResult[]);
+  int cc_FileHostingSession_yieldChunk (struct FileHostingSession* session, unsigned char* cffiResult);
 
 #ifdef __cplusplus
 }

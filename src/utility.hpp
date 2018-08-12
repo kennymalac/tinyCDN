@@ -11,27 +11,42 @@ namespace TinyCDN {
 extern "C" {
   struct ChunkedCursor {
     std::size_t bufferSize;
+    std::uintmax_t size;
     std::size_t seekPosition;
-    std::string_view buffer;
     std::ifstream handle;
 
-    inline ChunkedCursor(std::size_t bufferSize,
-                         std::size_t seekPosition)
-      : bufferSize(bufferSize),
-        seekPosition(seekPosition) {}
+    std::size_t numChunks = 0;
+    bool isLastChunk = false;
+    std::size_t forwardsAmount = 0;
+    size_t currentChunkNum = 0;
+    std::size_t lastChunkSize;
 
     inline ChunkedCursor(std::size_t bufferSize,
+                         std::uintmax_t size,
+                         std::size_t seekPosition)
+      : bufferSize(bufferSize),
+        size(size),
+        seekPosition(seekPosition),
+        numChunks(size / bufferSize + 1),
+        lastChunkSize(size % bufferSize) {
+    }
+
+    inline ChunkedCursor(std::size_t bufferSize,
+                         std::uintmax_t size,
                          std::size_t seekPosition,
                          std::function<void(std::ifstream&)> setupStream)
       : bufferSize(bufferSize),
-        seekPosition(seekPosition) {
+        size(size),
+        seekPosition(seekPosition),
+        numChunks(size / bufferSize + 1),
+        lastChunkSize(size % bufferSize) {
       setupStream(handle);
     }
 
     ~ChunkedCursor();
 
-    void prevChunk();
-    void nextChunk();
+    void prevChunk(unsigned char* buffer);
+    void nextChunk(unsigned char* buffer);
   };
 }
 

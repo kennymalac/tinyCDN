@@ -47,6 +47,16 @@ extern "C" {
     return info;
   }
 
+  struct HostedFileInfo* cc_HostedFileInfo_new (int id,
+                                                char* fName,
+                                                int owned) {
+    auto* info = new HostedFileInfo(id, fName, owned);
+
+    std::ios::sync_with_stdio();
+    std::cout << "cc_HostedFileInfo_new | id: " << info->id << " " << "fileName: " << info->fileName << " " << "owned: " << info->owned << std::endl;
+
+    return info;
+  };
 
   FileUploadingSession* cc_FileUploadingSession_new () {
     auto* master = new CDNMasterSingleton;
@@ -197,18 +207,25 @@ extern "C" {
       return 1;
     }
     else if (exists) {
+      // Move the filebucket back into the registry item
+      session->registryItem->fileBucket = std::move(session->bucket);
       return -1;
     }
+    // Move the filebucket back into the registry item
+    session->registryItem->fileBucket = std::move(session->bucket);
     return 0;
   }
 
   void cc_FileHostingSession_getChunkingHandle (struct FileHostingSession* _session) {
     auto session = reinterpret_cast<FileHostingSession*>(_session);
     std::ios::sync_with_stdio();
-    std::cout << "cc_FileHostingSession_chunkFile" << std::endl;
+
+    auto size = session->hostingFile->getRealSize().size;
+    std::cout << "cc_FileHostingSession_chunkFile | size: " << size << std::endl;
 
     session->cursor = std::make_unique<ChunkedCursor>(
-      256_kB,
+      32_kB,
+      size,
       0,
       [&session](std::ifstream& stream) {
         session->hostingService->hostFile(
@@ -216,10 +233,31 @@ extern "C" {
           std::move(session->hostingFile),
           std::move(session->bucket),
           session->registryItem);
+        std::ios::sync_with_stdio();
+        stream.seekg (0, stream.end);
+        std::cout << "istream size: " << stream.tellg() << std::endl;
+        stream.seekg (0, stream.beg);
       });
   }
 
-  void cc_FileHostingSession_yieldChunk (struct FileHostingSession* session, char* cffiResult[]) {
+  /*
+    Returns a 0 if the chunking should continue
+    Returns a non-0 chunk length if this is the last chunk
+  */
+  int cc_FileHostingSession_yieldChunk (struct FileHostingSession* _session, unsigned char* cffiResult) {
+    std::cout << "cc_FileHostingSession_yieldChunk" << std::endl;
+
+    auto session = reinterpret_cast<FileHostingSession*>(_session);
+    session->cursor->nextChunk(cffiResult);
+
+    std::cout << "chunk: " << cffiResult << std::endl;
+
+    std::cout << "cc_FileHostingSession_yieldChunk finished | forwardsAmount: " << session->cursor->forwardsAmount << std::endl;
+    if (session->cursor->isLastChunk) {
+      return session->cursor->forwardsAmount;
+    }
+
+    return 0;
   }
 }
 }
