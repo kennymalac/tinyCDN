@@ -17,24 +17,12 @@ namespace TinyCDN {
     }
 
     void ChunkedCursor::nextChunk(unsigned char *buffer) {
-      // std::ios::sync_with_stdio();
-      std::cout << "numChunks: " << numChunks <<
-        " currentChunkNum: " << currentChunkNum <<
-        " bufferSize: " << bufferSize <<
-        " lastChunkSize: " << lastChunkSize <<
-        std::endl;
       isLastChunk = numChunks <= ++currentChunkNum;
-      std::cout << "numChunks: " << numChunks <<
-        " currentChunkNum: " << currentChunkNum <<
-        std::endl;
       forwardsAmount = isLastChunk ? lastChunkSize : bufferSize;
 
-      // for some reason the first chunk doesn't seem to be any data whatsoever,
-      // even though the first chunk is BIGGER than the last chunk. HOW?
       handle.seekg(seekPosition);
 
       handle.read(reinterpret_cast<char*>(buffer), forwardsAmount * sizeof(char));
-      std::cout << "Read buffer... | forwardsAmount: " << forwardsAmount << std::endl;
       seekPosition += forwardsAmount;
     }
   }

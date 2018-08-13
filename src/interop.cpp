@@ -233,10 +233,6 @@ extern "C" {
           std::move(session->hostingFile),
           std::move(session->bucket),
           session->registryItem);
-        std::ios::sync_with_stdio();
-        stream.seekg (0, stream.end);
-        std::cout << "istream size: " << stream.tellg() << std::endl;
-        stream.seekg (0, stream.beg);
       });
   }
 
@@ -249,8 +245,6 @@ extern "C" {
 
     auto session = reinterpret_cast<FileHostingSession*>(_session);
     session->cursor->nextChunk(cffiResult);
-
-    std::cout << "chunk: " << cffiResult << std::endl;
 
     std::cout << "cc_FileHostingSession_yieldChunk finished | forwardsAmount: " << session->cursor->forwardsAmount << std::endl;
     if (session->cursor->isLastChunk) {
