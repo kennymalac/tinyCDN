@@ -43,13 +43,17 @@ auto FileUploadingService::requestFileBucket(
     }
   }
   else {
-    // First remove all full FileBuckets
     {
       std::unique_lock wLock(registry->mutex);
-      std::remove_if(registry->currentFileBuckets.begin(), registry->currentFileBuckets.end(), [](auto const& fb) {
-          std::cout << fb->size.size << fb->storage->getAllocatedSize().size << "\n";
+      // First remove any nullptrs
+      registry->currentFileBuckets.erase(std::find_if(registry->currentFileBuckets.begin(), registry->currentFileBuckets.end(), [](auto const& fb) {
+            return !fb;
+          }), registry->currentFileBuckets.end());
+
+      // And then remove full file buckets
+      registry->currentFileBuckets.erase(std::remove_if(registry->currentFileBuckets.begin(), registry->currentFileBuckets.end(), [](auto const& fb) {
           return fb->size >= fb->storage->getAllocatedSize();
-        });
+          }), registry->currentFileBuckets.end());
     }
 
     std::shared_lock lock(registry->mutex);
