@@ -17,6 +17,9 @@ struct FileBucketRegistryItem;
 namespace Storage = TinyCDN::Middleware::FileStorage;
 
 inline void logStoredFile(const std::optional<Storage::StoredFile>& maybeStoredFile, std::ostream& errorLog) {
+  if (!maybeStoredFile.has_value()) {
+    return;
+  }
   auto const file = maybeStoredFile.value();
   errorLog << "id: " << file.id.value_or(0) << "\n";
   errorLog << "location: " << file.location << "\n";

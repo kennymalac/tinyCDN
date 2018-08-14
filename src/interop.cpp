@@ -196,6 +196,9 @@ extern "C" {
   int cc_FileHostingSession_getContentFile (struct FileHostingSession* _session, struct HostedFileInfo* info) {
     auto session = reinterpret_cast<FileHostingSession*>(_session);
 
+    std::ios::sync_with_stdio();
+    std::cout << "cc_FileHostingSession_getContentFile" << std::endl;
+
     // NOTE: the session's bucket afterwards
     auto [maybeStoredFile, exists] = session->hostingService->
       obtainStoredFile(session->bucket,
