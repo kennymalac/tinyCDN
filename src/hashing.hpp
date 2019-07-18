@@ -13,17 +13,14 @@ public:
   }
 
   char* operator()(int size) {
-    char buffer[size+1];
+    char* buffer = new char[size+1];
 
     for (int i = 0; i<size; i++) {
       buffer[i] = alphanumeric[dist(re)];
     }
     buffer[size] = '\0';
 
-    char* output = new char[size+1];
-    strcpy(output, buffer);
-
-    return output;
+    return buffer;
   }
 
 private:
@@ -34,7 +31,7 @@ private:
 
 
 //! Wrapper type for fixed size C++-style fixed-length array with conversion method to C string
-pptemplate <int fixedSize>
+template <int fixedSize>
 class Id {
 public:
   //! WARNING: When val is longer than the size of the Id, the rest of the char* is ignored.
