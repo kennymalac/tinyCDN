@@ -4,7 +4,7 @@ set(PROJECT_VERSION 0.0.1)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
-set(CMAKE_CXX_COMPILER g++-7)
+set(CMAKE_CXX_COMPILER "/usr/lib64/llvm/8/bin/clang++")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -28,12 +28,14 @@ set(PROJECT_SOURCE_DIR, "src/")
 set(SOURCES
   src/utility.hpp
   src/utility.cpp
+  src/hashing.hpp
   src/middlewares/file.hpp
   src/middlewares/FileStorage/storedfile.hpp
   src/middlewares/FileStorage/storedfile.cpp
   src/middlewares/exceptions.hpp
   src/middlewares/exceptions.cpp
   src/middlewares/file.cpp
+  src/middlewares/FileStorage/storage.hpp
   src/middlewares/FileStorage/storage.hpp
   src/middlewares/FileStorage/storage.cpp
   src/middlewares/FileStorage/haystack.hpp
@@ -49,6 +51,7 @@ set(SOURCES
 )
 
 set(TEST_SOURCES
+  src/test/hashing.cpp
   src/test/fileupload.cpp
   src/test/filehosting.cpp
   src/test/file.cpp
@@ -59,7 +62,7 @@ include_directories("${PROJECT_SOURCE_DIR}")
 #add_subdirectory(src)
 add_library(TinyCDN_Base SHARED ${SOURCES})
 add_library(stdc++fs UNKNOWN IMPORTED)
-set_property(TARGET stdc++fs PROPERTY IMPORTED_LOCATION "/usr/lib/gcc/x86_64-linux-gnu/7/libstdc++fs.a")
+set_property(TARGET stdc++fs PROPERTY IMPORTED_LOCATION "/usr/lib64/gcc/x86_64-pc-linux-gnu/7.3.0/libstdc++fs.a")
 #target_link_libraries(TinyCDN_Base PUBLIC)
 add_executable(Run src/main.cpp)
 target_link_libraries(TinyCDN_Base stdc++fs)

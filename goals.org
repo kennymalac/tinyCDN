@@ -1,0 +1,5 @@
+* TODO better hashing mechanism for files, non-int ids
+* TODO remove META file necessity (buckets should have uuid)
+* TODO volume node/master node distinction
+* TODO replication strategy class (geolocation, backup, & 
+* TODO owned filebuckets
