@@ -10,6 +10,7 @@
 #endif
 
 #ifdef __cplusplus
+using TinyCDN::Utility::ChunkedCursor;
 namespace TinyCDN {
 extern "C" {
   struct FileUploadingSession {

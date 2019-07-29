@@ -6,7 +6,7 @@
 #include <fstream>
 #include <functional>
 
-namespace TinyCDN {
+namespace TinyCDN::Utility {
 
 extern "C" {
   struct ChunkedCursor {

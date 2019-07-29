@@ -18,6 +18,9 @@
 
 namespace fs = std::experimental::filesystem;
 
+using TinyCDN::Utility::Size;
+using TinyCDN::Utility::operator""_mB;
+
 namespace TinyCDN::Middleware::File {
 
 // struct TypedFileKeystore {

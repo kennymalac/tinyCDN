@@ -14,6 +14,8 @@
 #include "../../utility.hpp"
 
 namespace fs = std::experimental::filesystem;
+using TinyCDN::Utility::Size;
+using TinyCDN::Utility::operator""_kB;
 
 
 namespace TinyCDN::Middleware::FileStorage {

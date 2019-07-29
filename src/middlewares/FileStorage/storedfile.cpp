@@ -4,6 +4,8 @@
 #include "../../utility.hpp"
 #include "../exceptions.hpp"
 
+using TinyCDN::Utility::operator""_kB;
+
 namespace TinyCDN::Middleware::FileStorage {
 StoredFile::StoredFile(Size size, fs::path location, bool temporary, std::unique_ptr<std::unique_lock<std::shared_mutex>> lock)
   : size(size), temporary(temporary), location(location), lock(std::move(lock)) {}

@@ -9,6 +9,7 @@ namespace fs = std::experimental::filesystem;
 
 #include "../../utility.hpp"
 
+using TinyCDN::Utility::Size;
 namespace TinyCDN::Middleware::FileStorage {
 
 using fileId = uint_fast32_t;

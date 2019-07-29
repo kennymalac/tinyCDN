@@ -16,6 +16,8 @@ namespace fs = std::experimental::filesystem;
 #include "exceptions.hpp"
 #include "FileStorage/filesystem.hpp"
 
+using TinyCDN::Utility::Size;
+
 namespace TinyCDN::Middleware::File {
 
 auto FileUploadingService::requestFileBucket(
@@ -331,7 +333,7 @@ auto FileBucketRegistryItemConverter::convertField(std::string field, std::strin
     params->size = std::strtoumax(value.c_str(), &nptr, 10);
   }
   else if (field == "types") {
-    params->types = fromCSV(value);
+    params->types = Utility::fromCSV(value);
   }
 }
 
@@ -392,7 +394,7 @@ void FileBucketRegistry::registerItem(std::unique_ptr<FileBucket>& fb) {
     {"location", static_cast<std::string>(fb->location)},
     {"id", std::to_string(fb->id)},
     {"size", std::to_string(fb->size)},
-    {"types", asCSV<std::vector<std::string>>(fb->types)}
+    {"types", Utility::asCSV<std::vector<std::string>>(fb->types)}
   };
   auto item = std::make_shared<FileBucketRegistryItem>(input);
 

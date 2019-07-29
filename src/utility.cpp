@@ -6,7 +6,7 @@
 
 #include "utility.hpp"
 
-namespace TinyCDN {
+namespace TinyCDN::Utility {
   extern "C" {
     ChunkedCursor::~ChunkedCursor() {
       handle.close();

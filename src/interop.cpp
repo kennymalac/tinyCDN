@@ -11,6 +11,7 @@
 #include "utility.hpp"
 #include "middlewares/file.hpp"
 
+using TinyCDN::Utility::operator""_kB;
 namespace TinyCDN {
 
 auto getUploadInfo(FileUploadInfo* info) {
@@ -226,7 +227,7 @@ extern "C" {
     auto size = session->hostingFile->getRealSize();
     std::cout << "cc_FileHostingSession_chunkFile | size: " << size << std::endl;
 
-    session->cursor = std::make_unique<ChunkedCursor>(
+    session->cursor = std::make_unique<Utility::ChunkedCursor>(
       32_kB,
       size,
       0,

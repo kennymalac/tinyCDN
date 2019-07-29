@@ -11,6 +11,7 @@
 namespace file = TinyCDN::Middleware::File;
 namespace storage = TinyCDN::Middleware::FileStorage;
 using namespace TinyCDN;
+using namespace TinyCDN::Utility;
 
 namespace fs = std::experimental::filesystem;
 
