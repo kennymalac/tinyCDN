@@ -197,6 +197,7 @@ std::unique_ptr<FileBucket>& FileBucketRegistryItem::getBucket(std::shared_mutex
   }
 
   // The FileBucket object was GHOSTED
+  // TODO make creation of FileBuckets into Strategy class
   // TODO use atomic_shared_ptr to make this type of cloning unnecessary
   std::cout << "Making new FileBucket in FileBucketRegistryItem getBucket" << std::endl;
   auto converter = std::make_unique<FileBucketRegistryItemConverter>();
