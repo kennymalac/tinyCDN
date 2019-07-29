@@ -78,7 +78,7 @@ public:
 
       // haystack limit OR file limit?
       // TODO specialize this per read/write cursor
-      auto const forwardsAmount = 256_kB > (haystackSize.size - seekPosition) ? 256_kB : (haystackSize.size - seekPosition);
+      auto const forwardsAmount = 256_kB > (haystackSize - seekPosition) ? 256_kB : (haystackSize - seekPosition);
 
       this->operate(buffer, forwardsAmount);
 
@@ -178,7 +178,7 @@ public:
 
   // TODO lock the input/output handles
   HaystackWriteCursor write(std::ifstream& fileHandle, std::size_t position) {
-    return HaystackWriteCursor{fileHandle, this->outputHandle, position, Size{this->allocatedSize->size}};
+    return HaystackWriteCursor{fileHandle, this->outputHandle, position, this->getAllocatedSize()};
   }
 
 //  ReadWriteHaystackCursor begin;
@@ -187,12 +187,12 @@ public:
 //  ReadOnlyHaystackCursor cend;
 
   HaystackReadCursor read(std::size_t position) {
-    return HaystackReadCursor{this->inputHandle, position, Size{this->allocatedSize->size}};
+    return HaystackReadCursor{this->inputHandle, position, this->getAllocatedSize()};
   }
 
   inline void addFile(std::size_t position, std::ifstream file, Size fileSize) {
     // addedFile
-    for (auto it = this->write(file, position); it <= it.end(position + fileSize.size); ++it) {
+    for (auto it = this->write(file, position); it <= it.end(position + fileSize); ++it) {
       auto block = *it;
       block.value().get();
       // TODO verify hashed chunk

@@ -223,7 +223,7 @@ extern "C" {
     auto session = reinterpret_cast<FileHostingSession*>(_session);
     std::ios::sync_with_stdio();
 
-    auto size = session->hostingFile->getRealSize().size;
+    auto size = session->hostingFile->getRealSize();
     std::cout << "cc_FileHostingSession_chunkFile | size: " << size << std::endl;
 
     session->cursor = std::make_unique<ChunkedCursor>(

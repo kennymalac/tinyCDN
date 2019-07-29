@@ -53,7 +53,7 @@ SCENARIO("a user uploads a file to the CDN") {
       auto bucket = uploadService->requestFileBucket(storedFile, ctype, ftype, tags, false).get();
 
       THEN("An empty bucket is retrieved") {
-        REQUIRE( bucket->storage->getAllocatedSize().size == 0 );
+        REQUIRE( bucket->storage->getAllocatedSize() == 0 );
 
         AND_WHEN("the uploadFile method is invoked to add a file to the public FileBucket") {
           auto result = uploadService->uploadFile(std::move(bucket), std::move(storedFile), ctype, ftype, tags).get();
@@ -68,7 +68,7 @@ SCENARIO("a user uploads a file to the CDN") {
             // TODO test situation with same filename
             REQUIRE( sf->location == (master->session->registry->location / fs::path(fbId) / "store" / "1" / fileName) );
 
-            REQUIRE( fb->storage->getAllocatedSize().size == fileSize.size );
+            REQUIRE( fb->storage->getAllocatedSize() == fileSize );
 
             {
               std::ifstream storedFileIn(sf->location);
@@ -98,7 +98,7 @@ SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file is rest
       auto storedFile = fileBucket->storage->lookup(static_cast<storage::fileId>(1));
 
       THEN("the FileBucket storage is still the same allocatedSize, the StoredFile id is the same, the StoredFile is readable") {
-        REQUIRE( fileBucket->storage->getAllocatedSize().size == fs::file_size(storedFile->location) );
+        REQUIRE( fileBucket->storage->getAllocatedSize() == fs::file_size(storedFile->location) );
         REQUIRE( storedFile->id == fileId );
         auto storedFileIn = storedFile->getStream<std::ifstream>();
         std::string fileContents((std::istreambuf_iterator<char>(storedFileIn)),
@@ -111,7 +111,7 @@ SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file is rest
 
           THEN("The storedFile is no longer in scope, the allocatedSize was decreased, and a lookup fails") {
             REQUIRE( storedFile == nullptr );
-            REQUIRE( fileBucket->storage->getAllocatedSize().size == 0 );
+            REQUIRE( fileBucket->storage->getAllocatedSize() == 0 );
             REQUIRE_THROWS_AS( fileBucket->storage->lookup(static_cast<storage::fileId>(1)), file::FileStorageException );
           }
         }

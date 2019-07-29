@@ -24,7 +24,7 @@ inline void logStoredFile(const std::optional<Storage::StoredFile>& maybeStoredF
   errorLog << "id: " << file.id.value_or(0) << "\n";
   errorLog << "location: " << file.location << "\n";
   errorLog << "temporary: " << file.temporary << "\n";
-  errorLog << "size: " << file.size.size << "\n";
+  errorLog << "size: " << file.size << "\n";
 }
 
 class FileStorageException : public std::runtime_error {

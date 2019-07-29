@@ -276,7 +276,7 @@ FileBucket::FileBucket (Size size, fs::path registryLocation, std::vector<std::s
   // Make sure there is enough space for this size
   auto availableSpace = fs::space(registryLocation).available;
 
-  if (availableSpace < size.size) {
+  if (availableSpace < size) {
     throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
   }
 }
@@ -290,7 +290,7 @@ FileBucket::FileBucket (Storage::fileId id, Size size, fs::path location, std::v
 
   storage = std::make_unique<FileStorage::FilesystemStorage>(size, location, true);
 
-  if (availableSpace < size.size) {
+  if (availableSpace < size) {
     throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
   }
 }
@@ -303,7 +303,7 @@ FileBucket::FileBucket (Storage::fileId id, Size size, fs::path location, std::v
 // TODO figure out return type
 //auto FileBucket::getFile(std::size_t position, std::size_t fileSize) {
 //  std::vector<std::unique_ptr<FileStorage::HaystackBlock>> test;
-//  for (auto it = this->storage->read(position); it <= it.end(position + fileSize.size); ++it) {
+//  for (auto it = this->storage->read(position); it <= it.end(position + fileSize); ++it) {
 
 //  }
 //}
@@ -391,7 +391,7 @@ void FileBucketRegistry::registerItem(std::unique_ptr<FileBucket>& fb) {
   std::unordered_map<std::string, std::string> input = {
     {"location", static_cast<std::string>(fb->location)},
     {"id", std::to_string(fb->id)},
-    {"size", std::to_string(fb->size.size)},
+    {"size", std::to_string(fb->size)},
     {"types", asCSV<std::vector<std::string>>(fb->types)}
   };
   auto item = std::make_shared<FileBucketRegistryItem>(input);

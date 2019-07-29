@@ -101,7 +101,7 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
         using fbTestProps = std::tuple<storage::fileId&, Size, Size&, fs::path, std::vector<std::string>&, std::vector<std::string>&>;
 
-        std::vector<Size> fbSizes;
+        std::vector<std::unique_ptr<Size>> fbSizes;
         std::vector<std::vector<std::string>> fbTypes;
         std::vector<storage::fileId> fbIds;
 
@@ -115,18 +115,18 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
           REQUIRE( registryItem->fileBucket.has_value() == false );
 
           // Test the fields of the FileBucket
-          fbSizes.emplace_back(static_cast<Size>(std::get<2>(fbArgs[i])));
+          fbSizes.emplace_back(std::make_unique<Size>(static_cast<Size>(std::get<2>(fbArgs[i]))));
           fbTypes.emplace_back(static_cast<std::vector<std::string>>(std::get<4>(fbArgs[i])));
           fbIds.emplace_back(static_cast<storage::fileId>(i+1));
 
           REQUIRE( bucket->id == fbIds[i] );
           REQUIRE( bucket->location == (fbRegistry->location / fs::path{std::to_string(fbIds[i])}) );
-          REQUIRE( bucket->size.size == fbSizes[i].size );
+          REQUIRE( bucket->size == *fbSizes[i].get() );
 
           REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
 
           // Test FileBucket storage
-          REQUIRE( bucket->storage->getAllocatedSize().size == Size{0_kB}.size );
+          REQUIRE( bucket->storage->getAllocatedSize() == Size{0_kB} );
 
           // Tear down filebucket later
           master->session->registry->registry[i]->fileBucket = std::move(bucket);

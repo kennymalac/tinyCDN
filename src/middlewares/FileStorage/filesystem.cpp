@@ -31,7 +31,7 @@ fileId FilesystemStorage::getUniqueStoreId()
 
 void FilesystemStorage::persist() {
   META.seekp(0);
-  META << storeUniqueId << ";" << fileUniqueId << ';' << allocatedSize->size;
+  META << storeUniqueId << ";" << fileUniqueId << ';' << getAllocatedSize();
   META.flush();
 }
 
@@ -73,7 +73,7 @@ std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
 std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> file)
 {
   std::unique_lock<std::mutex> storageLock(mutex);
-  allocatedSize = std::make_unique<Size>(allocatedSize->size + file->size.size);
+  allocatedSize = std::make_unique<Size>(getAllocatedSize() + file->size);
 
   auto const assignedId = getUniqueFileId();
 
@@ -103,7 +103,7 @@ std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> f
     std::ofstream stream(assignedLocation);
     if (!stream.is_open() || stream.bad()) {
       storageLock.lock();
-      allocatedSize = std::make_unique<Size>(allocatedSize->size - file->size.size);
+      allocatedSize = std::make_unique<Size>(getAllocatedSize() - file->size);
       storageLock.unlock();
       storeLock.unlock();
       throw File::FileStorageException(0, "Temporary file could not be created for StoredFile in specified location", *file);
@@ -137,9 +137,9 @@ void FilesystemStorage::remove(std::unique_ptr<StoredFile> file)
 
   fs::remove(this->location / this->linkDirName / std::to_string(file->id.value()));
 
-  allocatedSize = file->size.size != 0
-    ? std::make_unique<Size>(allocatedSize->size - file->size.size)
-    : std::make_unique<Size>(allocatedSize->size - file->getRealSize().size);
+  allocatedSize = file->size != 0
+    ? std::make_unique<Size>(getAllocatedSize() - file->size)
+    : std::make_unique<Size>(getAllocatedSize() - file->getRealSize());
 
   fs::remove(file->location);
 
@@ -155,7 +155,7 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
   std::ios::sync_with_stdio();
 
   std::cout << "Creating new FilesystemStorage...\n"
-            << "size: " << size.size
+            << "size: " << size
             << " location: " << location
             << " preallocated: " << preallocated << std::endl;
 

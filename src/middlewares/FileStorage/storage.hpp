@@ -29,7 +29,7 @@ public:
   const bool preallocated = false;
 
   inline Size getAllocatedSize() {
-    return Size{allocatedSize->size};
+    return Size{*allocatedSize.get()};
   }
 
   //! Storage backends override this method to allocate storage on the disk

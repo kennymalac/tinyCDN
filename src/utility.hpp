@@ -50,6 +50,8 @@ extern "C" {
   };
 }
 
+typedef const uintmax_t Size;
+
 constexpr std::size_t operator""_kB(unsigned long long v) {
   return 1024u * v;
 }
@@ -61,34 +63,6 @@ constexpr std::size_t operator""_mB(unsigned long long v) {
 constexpr std::size_t operator""_gB(unsigned long long v) {
   return 1073741824 * v;
 }
-
-struct Size {
-  // Immutable
-  const uintmax_t size;
-  inline Size(uintmax_t size) : size(size) {}
-
-  const Size operator+(Size& S2) const {
-    return Size{this->size + S2.size};
-  }
-  const Size operator-(Size& S2) const {
-    return Size{this->size - S2.size};
-  }
-  const Size operator*(Size& S2) const {
-    return Size{this->size * S2.size};
-  }
-  const Size operator/(Size& S2) const {
-    return Size{this->size / S2.size};
-  }
-  bool operator>(const Size& S2) const {
-    return this->size > S2.size;
-  }
-  bool operator>=(const Size& S2) const {
-    return this->size >= S2.size;
-  }
-
-  inline Size (const Size& oldSize) : size(oldSize.size) {
-  }
-};
 
 /*! Takes a container and converts to a comma-separated string
  * Treats a comma'd string value as a container of string-convertible values.
