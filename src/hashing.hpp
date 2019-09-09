@@ -1,13 +1,14 @@
-#include <array>
+#include <bitset>
 #include <random>
 #include <string>
 #include <cstring>
+#include <sstream>
 
 namespace TinyCDN {
 
-class PseudoRandomAlphanumericFactory {
+class PseudoRandomHexFactory {
 public:
-  PseudoRandomAlphanumericFactory() {
+  PseudoRandomHexFactory() {
     std::random_device r;
     re = std::mt19937{r()};
   }
@@ -17,7 +18,7 @@ public:
     char* buffer = new char[size+1];
 
     for (int i = 0; i<size; i++) {
-      buffer[i] = alphanumeric[dist(re)];
+      buffer[i] = hex[dist(re)];
     }
     buffer[size] = '\0';
 
@@ -25,80 +26,84 @@ public:
   }
 
 private:
-  std::uniform_int_distribution<int> dist{0, 61};
+  std::uniform_int_distribution<int> dist{0, 15};
   std::mt19937 re;
-  static constexpr char alphanumeric[63]{"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"};
+  static constexpr char hex[17]{"0123456789ABCDEF"};
 };
 
 
-//! Wrapper type for fixed size C++-style fixed-length array with conversion method to C string
+//! Wrapper type for fixed-size bitset with hex conversion to/from a string
 template <int fixedSize>
 class Id {
 public:
-  //! WARNING: When val is longer than the size of the Id, the rest of the char* is ignored.
-  //! Undefined Behavior when val is not lengthy enough for this Id
-  Id& operator=(char* val) {
-    _value.fill('\0');
+  // //! WARNING: When val is longer than the size of the Id, the rest of the char* is ignored.
+  // Id& operator=(char* val) {
+  //   auto len = strlen(val);
+  //   if (len > fixedSize) {
+  //     len = fixedSize;
+  //   }
 
-    auto len = strlen(val);
-    if (len > fixedSize) {
-      len = fixedSize;
-    }
+  //   for (int i = 0; i < len; i++) {
+  //     _value[i] = val[i];
+  //   }
 
-    for (int i = 0; i < len; i++) {
-      _value[i] = val[i];
-    }
+  //   return *this;
+  // }
 
-    return *this;
-  }
+  Id& operator=(std::string val) {
+    unsigned long hexVal;
+    std::istringstream(val) >> std::hex >> hexVal;
 
-  Id& operator=(std::array<char, fixedSize> val) {
-    std::copy(std::begin(val), std::end(val), std::begin(_value));
+    _value = hexVal;
+
     return *this;
   }
 
   friend std::ostream& operator<< (std::ostream &out, const Id<fixedSize> &id) {
-    for (auto c : id.value()) {
-      out << c;
-    }
+    out << std::hex << id.value().to_ulong();
     return out;
   }
 
   friend std::ostream& operator<< (std::ostream &out, Id<fixedSize> &id) {
-    for (auto c : id.value()) {
-      out << c;
-    }
+    out << std::hex << id.value().to_ulong();
     return out;
   }
 
-  inline constexpr char* c_str() {
-    return *(char(*)[fixedSize+1]) _value.data();
+  std::string str() {
+    std::stringstream hex;
+    hex << std::hex << _value.to_ulong();
+    return hex.str();
   }
 
-  inline constexpr std::array<char, fixedSize> value() {
+  const char* c_str() {
+    return this->str().c_str();
+  }
+
+  inline std::bitset<fixedSize> value() noexcept {
     return _value;
   }
 
-  inline constexpr int size() noexcept {
+  constexpr int size() noexcept {
     return fixedSize;
   }
 
-  inline constexpr int length() noexcept {
+  constexpr int length() noexcept {
     return fixedSize;
   }
 
   private:
-  // Use string_view and char* value in place of this?
-  std::array<char, fixedSize> _value;
+  std::bitset<fixedSize> _value;
 };
 
-using UUID = Id<32>;
+using UUID = Id<128>;
 
 class UUID4Factory {
 public:
   UUID4Factory() {}
 
   UUID operator()() {
+    // NOTE not correct - UUID4 requires a few bits to be set to indicate version
+    // TODO refactor this, lol
     auto* id8   = generator(8);
     auto* id4_1 = generator(4);
     auto* id4_2 = generator(4);
@@ -122,7 +127,8 @@ public:
     strcat(buffer, id10);
 
     UUID output;
-    output = buffer;
+    std::string s(buffer);
+    output = s;
 
     delete id8;
     delete id4_1;
@@ -134,6 +140,6 @@ public:
   }
 
 private:
-  PseudoRandomAlphanumericFactory generator;
+  PseudoRandomHexFactory generator;
 };
 }
