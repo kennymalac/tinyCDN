@@ -31,7 +31,7 @@ public:
   std::unique_ptr<StorageFileUploadingService> getUploadingService();
 
   // std::map<SessionId, StorageFileHostingSession>
-p
+
   // HTTP frontend: implement the following
   // parseStorageClusterMasterRequest(std::string message); -> StorageClusterRequest
   // parseStorageClusterClientRequest(std::string message); -> StorageClusterRequest
