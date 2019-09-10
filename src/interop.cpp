@@ -1,6 +1,6 @@
 #ifdef __cplusplus
 #include "middlewares/file_interop.h"
-#include "master.hpp"
+#include "middlewares/Master/master.hpp"
 #include "services.hpp"
 
 #include <stdio.h>
@@ -60,7 +60,7 @@ extern "C" {
   };
 
   FileUploadingSession* cc_FileUploadingSession_new () {
-    auto* master = new CDNMasterSingleton;
+    auto* master = new Middleware::Master::MasterNodeSingleton;
     auto* session = new FileUploadingSession;
 
     std::ios::sync_with_stdio();
@@ -152,7 +152,7 @@ extern "C" {
   }
 
   struct FileHostingSession* cc_FileHostingSession_new () {
-    auto* master = new CDNMasterSingleton;
+    auto* master = new Middleware::Master::MasterNodeSingleton;
     auto* session = new FileHostingSession;
 
     std::ios::sync_with_stdio();

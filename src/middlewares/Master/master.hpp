@@ -5,14 +5,14 @@
 #include <memory>
 namespace fs = std::experimental::filesystem;
 
-#include "middlewares/file.hpp"
+#include "../file.hpp"
 #endif
 
 #ifdef __cplusplus
-namespace TinyCDN {
+namespace TinyCDN::Middleware::Master {
 
 //! Currently only holds a pointer to the FileBucketRegistry which contains information about all initiated FileBuckets.
-struct CDNMasterSession {
+struct MasterSession {
   std::shared_ptr<Middleware::File::FileBucketRegistry> registry;
 
   //SessionProvisioner session;
@@ -30,12 +30,12 @@ struct CDNMasterSession {
 
 //  };
 //}
-class CDNMaster {
+class MasterNode {
 // TODO private
 public:
 
   //! The spawned session store which stores current sessions
-  std::unique_ptr<CDNMasterSession> session;
+  std::unique_ptr<MasterSession> session;
 
   /*
     spawn CDN from new registry
@@ -43,25 +43,25 @@ public:
     contact name servers
    */
 
-  //! If this CDNMaster was opened from a pre-existing REGISTRY file that was created before running the current program instance
+  //! If this MasterNode was opened from a pre-existing REGISTRY file that was created before running the current program instance
   bool existing;
 
-  //! Initializes the session's registry, starts the CDNMasterSession process (TODO)
+  //! Initializes the session's registry, starts the MasterSession process (TODO)
   void spawnCDN();
 
-  CDNMaster(bool existing) : existing(existing) {
-    session = std::make_unique<CDNMasterSession>();
+  MasterNode(bool existing) : existing(existing) {
+    session = std::make_unique<MasterSession>();
   }
 };
 
-struct CDNMasterSingleton {
-  static CDNMaster* getInstance(bool existing = false, bool spawn = false);
+struct MasterNodeSingleton {
+  static MasterNode* getInstance(bool existing = false, bool spawn = false);
 };
 
 }
 #else
-typedef struct CDNMaster CDNMaster;
-typedef struct CDNMasterSingleton CDNMasterSingleton;
+typedef struct MasterNode MasterNode;
+typedef struct MasterNodeSingleton MasterNodeSingleton;
 typedef struct StoredFile StoredFile;
 typedef struct FileBucket FileBucket;
 #endif

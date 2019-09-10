@@ -1,11 +1,21 @@
 #include <string>
 #include <iostream>
 
-#include "master.hpp"
+#include "middlewares/Master/master.hpp"
 //#include "utility.hpp"
 //#include "middlewares/file.hpp"
 
-const std::string version = "0.0.1";
+// TEST
+#include "middlewares/Volume/marshaller.hpp"
+#include "middlewares/Volume/volume.hpp"
+#include "middlewares/Volume/services.hpp"
+#include "middlewares/StorageCluster/request.hpp"
+#include "middlewares/StorageCluster/response.hpp"
+#include "middlewares/StorageCluster/services.hpp"
+#include "middlewares/StorageCluster/storagecluster.hpp"
+
+
+const std::string version = "0.1.0";
 
 namespace file = TinyCDN::Middleware::File;
 using namespace TinyCDN;
@@ -33,7 +43,7 @@ int main() {
     std::string CDNDomain;
     std::cin >> CDNDomain;
 
-    TinyCDN::CDNMaster master(false);
+    Middleware::Master::MasterNode master(false);
     master.spawnCDN();
 
     std::cout << "Master spawned. No slaves have been created.";

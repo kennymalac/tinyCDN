@@ -5,7 +5,7 @@
 
 #include "include/catch.hpp"
 
-#include "src/master.hpp"
+#include "src/middlewares/Master/master.hpp"
 #include "src/middlewares/file.hpp"
 
 namespace file = TinyCDN::Middleware::File;
@@ -14,6 +14,7 @@ namespace storage = TinyCDN::Middleware::FileStorage;
 using namespace std::placeholders;
 using namespace TinyCDN;
 using namespace TinyCDN::Utility;
+using namespace TinyCDN::Middleware::Master;
 
 namespace fs = std::experimental::filesystem;
 
@@ -27,8 +28,8 @@ auto static fbArgs = std::vector<fbInputArgs>{
 
 SCENARIO("A new CDN is created") {
 
-  GIVEN("a new CDNMasterSingleton") {
-    auto* master = (new CDNMasterSingleton)->getInstance(false);
+  GIVEN("a new MasterNodeSingleton") {
+    auto* master = (new MasterNodeSingleton)->getInstance(false);
     master->existing = false;
 
     WHEN("the master is spawned") {
@@ -84,8 +85,8 @@ SCENARIO("A new CDN is created") {
 
 SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
-  GIVEN("a persisted CDNMaster with persisted buckets") {
-    auto* master = (new CDNMasterSingleton)->getInstance(true);
+  GIVEN("a persisted MasterNode with persisted buckets") {
+    auto* master = (new MasterNodeSingleton)->getInstance(true);
     master->existing = true;
 
     WHEN("the master is spawned") {

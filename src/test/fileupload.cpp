@@ -4,7 +4,7 @@
 #include <string>
 #include <iostream>
 
-#include "src/master.hpp"
+#include "src/middlewares/Master/master.hpp"
 //#include "utility.hpp"
 //#include "middlewares/file.hpp"
 
@@ -12,6 +12,7 @@ namespace file = TinyCDN::Middleware::File;
 namespace storage = TinyCDN::Middleware::FileStorage;
 using namespace TinyCDN;
 using namespace TinyCDN::Utility;
+using namespace TinyCDN::Middleware::Master;
 
 namespace fs = std::experimental::filesystem;
 
@@ -27,14 +28,14 @@ static std::string testValue =
 
 SCENARIO("a user uploads a file to the CDN") {
 
-  GIVEN("a temporary file has been already stored and CDNMaster initialized and an upload session exists") {
+  GIVEN("a temporary file has been already stored and MasterNode initialized and an upload session exists") {
     std::string fileName = "copyThis.txt";
     {
       std::ofstream tmpFile(std::string{"./"}.append(fileName));
       tmpFile << testValue;
     }
 
-    auto* master = (new CDNMasterSingleton)->getInstance(false);
+    auto* master = (new MasterNodeSingleton)->getInstance(false);
     master->existing = false;
     master->spawnCDN();
 
@@ -86,8 +87,8 @@ SCENARIO("a user uploads a file to the CDN") {
 
 SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file is restarted") {
 
-  GIVEN("A spawned CDNMaster and a persisted FileBucket") {
-    auto* master = (new CDNMasterSingleton)->getInstance(true);
+  GIVEN("A spawned MasterNode and a persisted FileBucket") {
+    auto* master = (new MasterNodeSingleton)->getInstance(true);
     master->existing = true;
     master->spawnCDN();
     auto&& fileBucket = master->session->registry->registry[0]->fileBucket.value();

@@ -1,4 +1,6 @@
-#include "../master.hpp"
+#pragma once
+
+#include "Master/master.hpp"
 #ifdef __cplusplus
 #include <string.h>
 #include <optional>

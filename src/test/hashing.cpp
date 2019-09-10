@@ -8,6 +8,7 @@
 #include "src/hashing.hpp"
 
 using namespace TinyCDN;
+using namespace TinyCDN::Utility::Hashing;
 
 SCENARIO("Random ids are generated") {
   GIVEN("a Pseudo Random hex string factory") {

@@ -4,7 +4,7 @@
 #include <string>
 #include <iostream>
 
-#include "src/master.hpp"
+#include "src/middlewares/Master/master.hpp"
 //#include "utility.hpp"
 //#include "src/middlewares/file.hpp"
 
@@ -12,6 +12,7 @@ namespace file = TinyCDN::Middleware::File;
 namespace storage = TinyCDN::Middleware::FileStorage;
 using namespace TinyCDN;
 using namespace TinyCDN::Utility;
+using namespace TinyCDN::Middleware::Master;
 
 namespace fs = std::experimental::filesystem;
 
@@ -27,14 +28,14 @@ static std::string testValue =
 
 SCENARIO("a user retrieves a file to the CDN") {
 
-  GIVEN("a StoredFile has been already stored in a FileBucket, a CDNMaster initialized, and a hosting session exists") {
+  GIVEN("a StoredFile has been already stored in a FileBucket, a MasterNode initialized, and a hosting session exists") {
     std::string fileName = "copyThis.txt";
     {
       std::ofstream tmpFile(std::string{"./"}.append(fileName));
       tmpFile << testValue;
     }
 
-    auto* master = (new CDNMasterSingleton)->getInstance(false);
+    auto* master = (new MasterNodeSingleton)->getInstance(false);
     master->existing = false;
     master->spawnCDN();
 

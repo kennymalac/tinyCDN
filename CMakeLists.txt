@@ -49,8 +49,8 @@ set(SOURCES
   src/middlewares/StorageCluster/response.hpp
   src/middlewares/StorageCluster/services.hpp
   src/middlewares/StorageCluster/storagecluster.hpp
-  src/master.hpp
-  src/master.cpp
+  src/middlewares/Master/master.hpp
+  src/middlewares/Master/master.cpp
   src/services.hpp
   src/services.cpp
   src/middlewares/file_interop.h

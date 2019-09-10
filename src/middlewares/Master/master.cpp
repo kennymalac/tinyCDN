@@ -6,8 +6,8 @@
 namespace fs = std::experimental::filesystem;
 #include "master.hpp"
 
-namespace TinyCDN {
-void CDNMaster::spawnCDN() {
+namespace TinyCDN::Middleware::Master {
+void MasterNode::spawnCDN() {
   // return statusfield
   // test
   std::cout << "spawning master, existing: " << this->existing << " " << "\n";
@@ -24,8 +24,8 @@ void CDNMaster::spawnCDN() {
   }
 };
 
-CDNMaster* CDNMasterSingleton::getInstance(bool existing, bool spawn) {
-  static CDNMaster instance(existing);
+MasterNode* MasterNodeSingleton::getInstance(bool existing, bool spawn) {
+  static MasterNode instance(existing);
 
   if (spawn && instance.session->registry == nullptr) {
     instance.spawnCDN();
