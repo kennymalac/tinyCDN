@@ -53,23 +53,29 @@ namespace TinyCDN::Middleware::File {
  * It can be configured to only accept a certain set of allowable filetypes as part of its contents.
  */
 // template <typename StorageBackend>
+// Temporary until architecture migration
+using FileBucketId = Storage::fileId;
+using VolumeId = int;
 struct FileBucket {
   // const size;
   // TypedFileKeystore retrieveKeystore();
   // FileContainer<FileType>& retrieveFile();
   // void stFile(tokenType key, FileContainer<FileType>& file);
 
-  // TODO gensym
-  //! The "unique" id
-  Storage::fileId id;
+  //! The unique id
+  FileBucketId id;
   //! The maximum Size allotted for storage
   Size size;
-  //! A file storage driver that provides methods to retrieve, modify, and delete files
-  std::unique_ptr<FileStorage::FilesystemStorage> storage;
+
+  //! The bucket's assigned virtual volume is responsible for retrieving, modifying, and deleting files
+  VolumeId virtualVolumeId;
   //! The location of where this FileBucket's storage is present
   fs::path location;
   //! Currently a stringly-typed set of categories of allowable content (i.e. Audio, Video, etc.)
   std::vector<std::string> types;
+  //! TODO remove this in migration
+  std::unique_ptr<FileStorage::FilesystemStorage> storage;
+
 
   // distributionPolicy
 
@@ -203,7 +209,7 @@ struct FileBucketRegistryItemConverter {
   //! Takes a FileBucket "field" (location, id, size, or types) and assigns it to its deduced conversion value
   auto convertField(std::string field, std::string value);
 
-  //! Creates a FileBucket or FileBucketRegistry instance by taking params and creating a FileBucket instance from it
+  //! Creates a FileBucket or FileBucketRegistryItem instance by taking params and creating a FileBucket instance from it
   template <typename T>
   std::unique_ptr<T> convertToValue();
 

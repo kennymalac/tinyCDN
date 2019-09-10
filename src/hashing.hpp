@@ -4,7 +4,7 @@
 #include <cstring>
 #include <sstream>
 
-namespace TinyCDN {
+namespace TinyCDN::Utility::Hashing {
 
 class PseudoRandomHexFactory {
 public:
@@ -30,7 +30,6 @@ private:
   std::mt19937 re;
   static constexpr char hex[17]{"0123456789ABCDEF"};
 };
-
 
 //! Wrapper type for fixed-size bitset with hex conversion to/from a string
 template <int fixedSize>
@@ -59,6 +58,10 @@ public:
     return *this;
   }
 
+  bool operator==(const Id<fixedSize> &other) const {
+    return this->_value == other->value();
+  }
+
   friend std::ostream& operator<< (std::ostream &out, const Id<fixedSize> &id) {
     out << std::hex << id.value().to_ulong();
     return out;
@@ -69,17 +72,17 @@ public:
     return out;
   }
 
-  std::string str() {
+  std::string str() const {
     std::stringstream hex;
     hex << std::hex << _value.to_ulong();
     return hex.str();
   }
 
-  const char* c_str() {
+  const char* c_str() const {
     return this->str().c_str();
   }
 
-  inline std::bitset<fixedSize> value() noexcept {
+  inline std::bitset<fixedSize> value() const noexcept {
     return _value;
   }
 
@@ -93,6 +96,15 @@ public:
 
   private:
   std::bitset<fixedSize> _value;
+};
+
+class IdHasher {
+public:
+  template <int fixedSize>
+  std::size_t operator()(const Id<fixedSize> &id) const {
+    const std::bitset<fixedSize> id2 = id.value();
+    return std::hash<std::bitset<fixedSize>>()(id2);
+  }
 };
 
 using UUID = Id<128>;

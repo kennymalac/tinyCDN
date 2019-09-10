@@ -4,7 +4,7 @@ set(PROJECT_VERSION 0.0.1)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
-set(CMAKE_CXX_COMPILER "/usr/lib64/llvm/8/bin/clang++")
+set(CMAKE_CXX_COMPILER "clang++")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -38,10 +38,17 @@ set(SOURCES
   src/middlewares/FileStorage/storage.hpp
   src/middlewares/FileStorage/storage.hpp
   src/middlewares/FileStorage/storage.cpp
-  src/middlewares/FileStorage/haystack.hpp
-  src/middlewares/FileStorage/haystack.cpp
+#  src/middlewares/FileStorage/haystack.hpp
+#  src/middlewares/FileStorage/haystack.cpp
   src/middlewares/FileStorage/filesystem.hpp
   src/middlewares/FileStorage/filesystem.cpp
+  src/middlewares/Volume/marshaller.hpp
+  src/middlewares/Volume/volume.hpp
+  src/middlewares/Volume/services.hpp
+  src/middlewares/StorageCluster/request.hpp
+  src/middlewares/StorageCluster/response.hpp
+  src/middlewares/StorageCluster/services.hpp
+  src/middlewares/StorageCluster/storagecluster.hpp
   src/master.hpp
   src/master.cpp
   src/services.hpp
@@ -60,9 +67,11 @@ set(TEST_SOURCES
 include_directories("${PROJECT_SOURCE_DIR}")
 
 #add_subdirectory(src)
+include_directories(/usr/local/include/asio)
 add_library(TinyCDN_Base SHARED ${SOURCES})
 add_library(stdc++fs UNKNOWN IMPORTED)
-set_property(TARGET stdc++fs PROPERTY IMPORTED_LOCATION "/usr/lib64/gcc/x86_64-pc-linux-gnu/7.3.0/libstdc++fs.a")
+set_property(TARGET stdc++fs PROPERTY IMPORTED_LOCATION "/usr/lib/gcc/x86_64-linux-gnu/8/libstdc++fs.a")
+
 #target_link_libraries(TinyCDN_Base PUBLIC)
 add_executable(Run src/main.cpp)
 target_link_libraries(TinyCDN_Base stdc++fs)
@@ -78,7 +87,6 @@ target_include_directories(Catch INTERFACE ${BASE_TEST_DIR}/include)
 add_executable(Test ${TEST_SOURCES})
 target_link_libraries(Test TinyCDN_Base Catch stdc++fs)
 add_test(NAME TestBase COMMAND Test)
-
 
 option(BUILD_CFFI "Generate the shared library" ON)
 if(BUILD_CFFI)

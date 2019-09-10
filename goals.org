@@ -3,6 +3,12 @@
 * TODO remove META file necessity (buckets should have uuid)
 * TODO volume node/master node distinction
 * TODO spawnCDN should load from configuration for storage nodes
+* TODO make FileBucketRegistry and VolumeRegistry use same base class
+** converter changes
+*** convertInput -> deserialize
+*** convertField -> deserializeField
+*** convertToValue -> serialize
+* TODO make Volume an abstract class like FileStorage?
 * TODO Dockerfiles for master node and storage node
 * TODO replication strategy class (geolocation, backup, & )
 * TODO owned filebuckets

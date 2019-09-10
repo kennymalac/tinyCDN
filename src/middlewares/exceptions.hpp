@@ -6,9 +6,19 @@
 #include <stdexcept>
 #include <sstream>
 #include <string>
+#include <stdexcept>
 
 #include "FileStorage/storedfile.hpp"
 
+namespace TinyCDN::Utility::Exceptions {
+class NotImplementedException : public std::logic_error
+{
+public:
+  NotImplementedException() : std::logic_error("Function not yet implemented.") {}
+};
+}
+
+// TODO migrate namespace
 namespace TinyCDN::Middleware::File {
 struct FileBucket;
 struct FileBucketRegistry;
