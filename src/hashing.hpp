@@ -1,10 +1,36 @@
+#include <algorithm>
 #include <bitset>
 #include <random>
 #include <string>
 #include <cstring>
 #include <sstream>
+//#include <iomanip>
+#include <ctype.h>
 
 namespace TinyCDN::Utility::Hashing {
+
+template <typename T>
+const char* hexCharToBinary(T c) {
+  switch(toupper(c)) {
+  case '0': return "0000";
+  case '1': return "0001";
+  case '2': return "0010";
+  case '3': return "0011";
+  case '4': return "0100";
+  case '5': return "0101";
+  case '6': return "0110";
+  case '7': return "0111";
+  case '8': return "1000";
+  case '9': return "1001";
+  case 'A': return "1010";
+  case 'B': return "1011";
+  case 'C': return "1100";
+  case 'D': return "1101";
+  case 'E': return "1110";
+  case 'F': return "1111";
+  default: throw new std::logic_error("Not a hexidecimal character");
+  }
+}
 
 class PseudoRandomHexFactory {
 public:
@@ -35,25 +61,8 @@ private:
 template <int fixedSize>
 class Id {
 public:
-  // //! WARNING: When val is longer than the size of the Id, the rest of the char* is ignored.
-  // Id& operator=(char* val) {
-  //   auto len = strlen(val);
-  //   if (len > fixedSize) {
-  //     len = fixedSize;
-  //   }
-
-  //   for (int i = 0; i < len; i++) {
-  //     _value[i] = val[i];
-  //   }
-
-  //   return *this;
-  // }
-
   Id& operator=(std::string val) {
-    unsigned long hexVal;
-    std::istringstream(val) >> std::hex >> hexVal;
-
-    _value = hexVal;
+    _value = std::bitset<fixedSize>(hexToBinary(val));
 
     return *this;
   }
@@ -63,23 +72,26 @@ public:
   }
 
   friend std::ostream& operator<< (std::ostream &out, const Id<fixedSize> &id) {
-    out << std::hex << id.value().to_ulong();
+    out << id.str();
     return out;
   }
 
   friend std::ostream& operator<< (std::ostream &out, Id<fixedSize> &id) {
-    out << std::hex << id.value().to_ulong();
+    out << id.str();
     return out;
   }
 
   std::string str() const {
     std::stringstream hex;
-    hex << std::hex << _value.to_ulong();
-    return hex.str();
-  }
 
-  const char* c_str() const {
-    return this->str().c_str();
+    auto const str = _value.to_string();
+
+    for (int i = 0; i < str.length(); i+=4) {
+      auto const val = std::stoi(str.substr(i,4), nullptr, 2);
+      hex << std::hex << val;
+    }
+
+    return hex.str();
   }
 
   inline std::bitset<fixedSize> value() const noexcept {
@@ -94,7 +106,20 @@ public:
     return fixedSize;
   }
 
-  private:
+  inline std::string hexToBinary(std::string hexInput) {
+    std::string hexVal;
+    std::istringstream(hexInput) >> std::hex >> hexVal;
+
+    std::stringstream result;
+
+    for (auto const c : hexVal) {
+      result << hexCharToBinary<const char>(c);
+    }
+
+    return result.str();
+  }
+
+protected:
   std::bitset<fixedSize> _value;
 };
 
@@ -107,46 +132,64 @@ public:
   }
 };
 
-using UUID = Id<128>;
+class UUID4 : public Id<128> {
+public:
+  UUID4& operator=(std::string val) {
+    std::string hexVal;
+    auto _val = val.substr();
+
+    // Remove any hyphens
+    _val.erase(std::remove(_val.begin(), _val.end(), '-'), _val.end());
+    Id::operator=(_val);
+
+    // Assign UUID version to 4
+    // Set 4 most significant bytes of 7th most significent byte to 4
+    _value.reset(76); // 0
+    _value.reset(77); // 0
+    _value.set(78); // 1
+    _value.reset(79); // 0
+
+    // Set 2 most significant bytes of 9th most significent byte (reserved UUID bits)
+    _value.reset(62);
+    _value.set(63);
+
+    return *this;
+  }
+
+  std::string str() const {
+    auto out = Id::str();
+    out.insert(8, "-");
+    out.insert(13, "-");
+    out.insert(18, "-");
+    out.insert(23, "-");
+
+    return out;
+  }
+
+  friend std::ostream& operator<< (std::ostream &out, const UUID4 &id) {
+    out << id.str();
+    return out;
+  }
+
+  friend std::ostream& operator<< (std::ostream &out, UUID4 &id) {
+    out << id.str();
+    return out;
+  }
+};
 
 class UUID4Factory {
 public:
   UUID4Factory() {}
 
-  UUID operator()() {
-    // NOTE not correct - UUID4 requires a few bits to be set to indicate version
-    // TODO refactor this, lol
-    auto* id8   = generator(8);
-    auto* id4_1 = generator(4);
-    auto* id4_2 = generator(4);
-    auto* id4_3 = generator(4);
-    auto* id10  = generator(10);
+  UUID4 operator()() {
+    auto* id32 = generator(32);
 
-    char buffer[33];
-
-    strcpy(buffer, id8);
-    buffer[8] = '-';
-    buffer[9] = '\0';
-    strcat(buffer, id4_1);
-    buffer[13] = '-';
-    buffer[14] = '\0';
-    strcat(buffer, id4_2);
-    buffer[18] = '-';
-    buffer[19] = '\0';
-    strcat(buffer, id4_3);
-    buffer[23] = '-';
-    buffer[24] = '\0';
-    strcat(buffer, id10);
-
-    UUID output;
-    std::string s(buffer);
+    UUID4 output;
+    std::string s(id32);
+    // UUID4 operator= sets version for us
     output = s;
 
-    delete id8;
-    delete id4_1;
-    delete id4_2;
-    delete id4_3;
-    delete id10;
+    delete id32;
 
     return output;
   }
