@@ -22,11 +22,11 @@ bool isValidHex(std::string s) {
   return true;
 }
 
-SCENARIO("Random ids are generated") {
+SCENARIO("Random strings are generated") {
   GIVEN("a Pseudo Random hex string factory") {
     PseudoRandomHexFactory generator;
 
-    WHEN("Random ids are generated") {
+    WHEN("Random strings are generated") {
       auto* hex8 = generator(8);
       auto* hex32 = generator(32);
       auto* hex64 = generator(64);

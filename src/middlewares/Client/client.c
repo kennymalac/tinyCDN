@@ -1,17 +1,18 @@
-#include "middlewares/file_interop.h"
+#include "client.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct FileUploadInfo* FileUploadInfo_new (char* temporaryLocation,
+struct FileUploadInfo* FileUploadInfo_new (char* fbId,
+					   char* temporaryLocation,
                                            char* contentType,
                                            char* fileType,
                                            char* tags,
                                            int wantsOwned) {
-  return cc_FileUploadInfo_new(temporaryLocation, contentType, fileType, tags, wantsOwned);
+  return cc_FileUploadInfo_new(fbId, temporaryLocation, contentType, fileType, tags, wantsOwned);
 };
 
-struct HostedFileInfo* HostedFileInfo_new (int id,
+struct HostedFileInfo* HostedFileInfo_new (char* id,
                                            char* fName,
                                            int owned) {
   return cc_HostedFileInfo_new(id, fName, owned);
@@ -39,7 +40,7 @@ struct FileHostingSession* FileHostingSession_new () {
 void FileHostingSession_delete (struct FileHostingSession* session) {
   return cc_FileHostingSession_delete(session);
 };
-int FileHostingSession_getBucket (struct FileHostingSession* session, int id) {
+int FileHostingSession_getBucket (struct FileHostingSession* session, char* id) {
   return cc_FileHostingSession_getBucket(session, id);
 };
 
@@ -56,6 +57,7 @@ int FileHostingSession_yieldChunk (struct FileHostingSession* session, unsigned 
 };
 
 
+// TODO separate tests into test file
 void testUpload(int arr[2]) {
   struct FileUploadingSession* session = FileUploadingSession_new();
   char* cffiResult[100];

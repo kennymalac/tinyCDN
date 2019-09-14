@@ -1,6 +1,7 @@
 #ifdef __cplusplus
-#include "middlewares/file_interop.h"
+#include "client.h"
 #include "middlewares/Master/master.hpp"
+// Everywhere a Master is used, use a Client
 #include "services.hpp"
 
 #include <stdio.h>
@@ -9,7 +10,8 @@
 #include <string>
 #include <memory>
 #include "utility.hpp"
-#include "middlewares/file.hpp"
+
+#include "../file.hpp"
 
 using TinyCDN::Utility::operator""_kB;
 namespace TinyCDN {
@@ -36,21 +38,22 @@ extern "C" {
 
   // struct Session {
   // };
-  struct FileUploadInfo* cc_FileUploadInfo_new (char* temporaryLocation,
-                                                char* contentType,
-                                                char* fileType,
-                                                char* tags,
-                                                int wantsOwned) {
-    auto* info = new FileUploadInfo(temporaryLocation, contentType, fileType, tags, wantsOwned);
+  struct FileUploadInfo* cc_FileUploadInfo_new (char* fileBucketId,
+						char* temporaryLocation,
+						char* contentType,
+						char* fileType,
+						char* tags,
+						int wantsOwned) {
+    auto* info = new FileUploadInfo(fileBucketId, temporaryLocation, contentType, fileType, tags, wantsOwned);
     std::ios::sync_with_stdio();
     std::cout << "cc_FileUploadInfo_new | temporaryLocation: " << info->temporaryLocation << " " << "contentType: " << info->contentType << " " << "fileType: " << info->fileType << std::endl;
 
     return info;
   }
 
-  struct HostedFileInfo* cc_HostedFileInfo_new (int id,
-                                                char* fName,
-                                                int owned) {
+  struct HostedFileInfo* cc_HostedFileInfo_new (char* id,
+						char* fName,
+						int owned) {
     auto* info = new HostedFileInfo(id, fName, owned);
 
     std::ios::sync_with_stdio();
@@ -68,7 +71,7 @@ extern "C" {
 
     // TODO don't use a singleton - use an object pool
     auto* service = new FileUploadingServiceSingleton;
-    session->uploadService = service->getInstance(master->getInstance(true, true)->session->registry);
+    session->uploadService = service->getInstance();
 
     return session;
   }
@@ -100,21 +103,21 @@ extern "C" {
     std::ios::sync_with_stdio();
     std::cout << "cc_FileUploadingSession_fetchBucket" << std::endl;
 
-    auto [temporaryLocation, contentType, fileType, tags, wantsOwned] = getUploadInfo(reinterpret_cast<FileUploadInfo*>(info));
+    auto [fileBucketId, temporaryLocation, contentType, fileType, tags, wantsOwned] = getUploadInfo(reinterpret_cast<FileUploadInfo*>(info));
 
     session->uploadingFile = std::make_unique<Middleware::FileStorage::StoredFile>(
       temporaryLocation,
       true,
       std::make_unique<std::unique_lock<std::shared_mutex>>(session->uploadingFileMutex));
 
-    session->bucket = session->uploadService->requestFileBucket(session->uploadingFile, contentType, fileType, tags, wantsOwned).get();
+    session->bucket = session->uploadService->requestFileBucket(fileBucketId, session->uploadingFile, contentType, fileType, tags, wantsOwned).get();
 
     return static_cast<int>(session->bucket->id);
   };
 
 
   // void beginFileUpload (FileUploadingSession* session) {
-  //   return 
+  //   return
   // }
 
   // void FileUploadingSession_startFileUpload (FileUploadingSession* session) {
@@ -129,7 +132,7 @@ extern "C" {
     std::ios::sync_with_stdio();
     std::cout << "cc_FileUploadingSession_finishFileUpload" << std::endl;
 
-    auto [temporaryLocation, contentType, fileType, tags, wantsOwned] = getUploadInfo(info);
+    auto [fileBucketId, temporaryLocation, contentType, fileType, tags, wantsOwned] = getUploadInfo(info);
 
     std::cout << "starting upload" << std::endl;
     auto _result = session->uploadService->uploadFile(std::move(session->bucket), std::move(session->uploadingFile), contentType, fileType, tags);
@@ -141,12 +144,11 @@ extern "C" {
 
     // C-ify the result
 
-    auto const [_fbId, _storedFileId] = result;
-    auto const fbId = std::to_string(_fbId).c_str();
+    auto const _storedFileId = result;
     auto const storedFileId = _storedFileId.c_str();
 
     cffiResult[0] = new char [sizeof(fbId)];
-    strcpy(cffiResult[0], fbId);
+    strcpy(cffiResult[0], fileBucketId);
     cffiResult[1] = new char [sizeof(storedFileId)];
     strcpy(cffiResult[1], storedFileId);
   }
@@ -160,7 +162,7 @@ extern "C" {
 
     // TODO don't use a singleton - use an object pool
     auto* service = new FileHostingServiceSingleton;
-    session->hostingService = service->getInstance(master->getInstance(true, true)->session->registry);
+    session->hostingService = service->getInstance();
 
     return session;
   }
@@ -170,15 +172,20 @@ extern "C" {
    }
 
   /*
+    TODO: fix this shit ! Has to return char*, because id is char*.
+    -1 not a sufficient error code. Ideally an std::optional response
+
     Returns a non-0 value bucket id
     Returns a -1 if the bucket could not be obtained
    */
-  int cc_FileHostingSession_getBucket (struct FileHostingSession* _session, int id) {
+  int cc_FileHostingSession_getBucket (struct FileHostingSession* _session, char* id) {
     auto session = reinterpret_cast<FileHostingSession*>(_session);
     std::ios::sync_with_stdio();
     std::cout << "cc_FileHostingSession_getBucket" << std::endl;
 
-    auto [maybeBucket, maybeItem] = session->hostingService->obtainFileBucket(id).get();
+    FileBucket fbId_instance;
+    fbId_instance = std::string(id);
+    auto [maybeBucket, maybeItem] = session->hostingService->obtainFileBucket(fbId_instance).get();
 
     if (!maybeBucket.has_value() || !maybeItem.has_value()) {
       return -1;
@@ -200,11 +207,14 @@ extern "C" {
     std::ios::sync_with_stdio();
     std::cout << "cc_FileHostingSession_getContentFile" << std::endl;
 
+    StoredFileId fileId;
+    fileId = std::string(info->id);
+
     // NOTE: the session's bucket afterwards
     auto [maybeStoredFile, exists] = session->hostingService->
       obtainStoredFile(session->bucket,
-                       info->id,
-                       info->fileName).get();
+		       fileId,
+		       info->fileName).get();
 
     if (maybeStoredFile.has_value()) {
       session->hostingFile = std::move(maybeStoredFile.value());
@@ -232,11 +242,11 @@ extern "C" {
       size,
       0,
       [&session](std::ifstream& stream) {
-        session->hostingService->hostFile(
-          stream,
-          std::move(session->hostingFile),
-          std::move(session->bucket),
-          session->registryItem);
+	session->hostingService->hostFile(
+	  stream,
+	  std::move(session->hostingFile),
+	  std::move(session->bucket),
+	  session->registryItem);
       });
   }
 

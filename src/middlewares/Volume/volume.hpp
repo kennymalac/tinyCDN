@@ -6,13 +6,16 @@
 #include <unordered_map>
 #include <optional>
 
+#include "../exceptions.hpp"
 #include "../../utility.hpp"
 #include "../../hashing.hpp"
+#include "../FileStorage/filesystem.hpp"
+
+namespace TinyCDN::Middleware::Volume {
 
 using namespace TinyCDN::Utility::Exceptions;
 using namespace TinyCDN::Utility::Hashing;
-
-namespace TinyCDN::Middleware::Volume {
+using namespace TinyCDN::Middleware::File;
 
 using TinyCDN::Utility::Size;
 
@@ -52,13 +55,13 @@ public:
   }
 
   inline void destroy() {
-    throw new NotImplementedException();
+    this->storage->destroy();
   }
 
   //! A file storage driver that provides methods to retrieve, modify, and delete files
   std::unique_ptr<storageType> storage;
 
-  inline StorageVolume(Size size, fs::path location, bool preallocated)
+  inline StorageVolume(VolumeId id, Size size, fs::path location, bool preallocated)
     : Volume(id, size) {
     storage = std::make_unique<storageType>(size, location, preallocated);
 
@@ -83,18 +86,23 @@ public:
   //! Checks if size is going DOWN, if so, will replicate elsewhere?
   void setSize(uintmax_t size);
 
+  void assignStorageVolume(std::shared_ptr<FileBucket> fb);
   std::unique_ptr<AnyStorageVolume> getStorageVolume(VolumeId id);
   template <typename T>
   std::unique_ptr<StorageVolume<T>> createStorageVolume(fs::path location);
   // replicateVolume
-  void removeVolume(VolumeId id);
+  inline void removeStorageVolume(VolumeId id) {
+    volumes.erase(id);
+    volumeMutexes.erase(id);
+  };
+
+  std::unordered_map<VolumeId, std::unique_ptr<MaybeAnyStorageVolume>, IdHasher> volumes;
 
   inline StorageVolumeManager(uintmax_t size) : size(size) {}
 
 private:
   uintmax_t size;
 
-  std::unordered_map<VolumeId, std::unique_ptr<MaybeAnyStorageVolume>, IdHasher> volumes;
   std::unordered_map<VolumeId, std::shared_mutex, IdHasher> volumeMutexes;
 };
 
@@ -106,14 +114,45 @@ private:
 class VirtualVolume : Volume {
 public:
   fs::path location;
-  std::optional<std::vector<VolumeId>> getVolumeIds();
+  std::optional<std::vector<VolumeId>> getFileBucketVolumeIds(FileBucketId id);
   //! Also modifies storage volume manager's size
   void setSize(uintmax_t size);
   StorageVolumeManager storageVolumeManager;
 
+  // void loadConfig();
+  //! TODO: how to split the db file up?
+  void loadDb(std::ifstream persistedDb);
+
+  //! NOTE: will not destroy backup volumes or replicated volumes(?)
+  inline void destroy() {
+    for (auto& kv : this->storageVolumeManager.volumes) {
+      // TODO move below to getStorageVolume
+
+      // if (auto volume = std::get_if<StorageVolume<FileStorage::FilesystemStorage>>(r.second)) {
+      //	volume->destroy();
+      // }
+      // else {
+      //	// This should never EVER happen! monostate is ruled out when mutex is acquired
+      // }
+
+      // // TODO improve complexity b/c removeStorageVolume will delete by key not by index
+      // this->storageVolumeManager.removeStorageVolume(kv.first);
+    }
+    this->setSize(0);
+  }
+
+  inline VirtualVolume(VolumeId id, uintmax_t size, fs::path location)
+    : Volume(id, size), location(location), storageVolumeManager(StorageVolumeManager{size})
+    {};
+
 private:
+  std::ofstream fbVolDbFile;
+  std::ofstream configFile;
+
   uintmax_t size;
   std::unordered_map<FileBucketId, std::vector<VolumeId>, IdHasher> fbVolDb;
 
+  //! Adds volume to fbVolDb and asynchronously persists the mapping to the disk
+  void addVolumeToFileBucket(FileBucketId fbId, VolumeId volId);
 };
 }

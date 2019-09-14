@@ -20,177 +20,6 @@ using TinyCDN::Utility::Size;
 
 namespace TinyCDN::Middleware::File {
 
-auto FileUploadingService::requestFileBucket(
-  std::unique_ptr<FileStorage::StoredFile>& tmpFile,
-  std::string contentType,
-  std::string fileType,
-  std::vector<std::string> tags,
-  bool wantsOwned)
-  -> std::future<std::unique_ptr<FileBucket>> {
-  auto fileSize = tmpFile->size;
-
-  std::ios::sync_with_stdio();
-
-  // TODO If wantsOwned, determine if the user has existing FileBuckets that take these types
-  if (wantsOwned) {
-    std::cout << "wantsOwned is true" << std::endl;
-    try {
-      auto assignedBucket = registry->findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags);
-      std::promise<std::unique_ptr<FileBucket>> test;
-      test.set_value(std::move(assignedBucket));
-      return test.get_future();
-    }
-    catch (FileBucketException e) {
-      std::cerr << e.what();
-    }
-  }
-  else {
-    {
-      std::unique_lock wLock(registry->mutex);
-      // First remove any nullptrs
-      registry->currentFileBuckets.erase(std::find_if(registry->currentFileBuckets.begin(), registry->currentFileBuckets.end(), [](auto const& fb) {
-            return !fb;
-          }), registry->currentFileBuckets.end());
-
-      // And then remove full file buckets
-      registry->currentFileBuckets.erase(std::remove_if(registry->currentFileBuckets.begin(), registry->currentFileBuckets.end(), [](auto const& fb) {
-          return fb->size >= fb->storage->getAllocatedSize();
-          }), registry->currentFileBuckets.end());
-    }
-
-    std::shared_lock lock(registry->mutex);
-    // Check if there is a ready bucket that supports this file
-    auto maybeBucket = std::find_if(registry->currentFileBuckets.begin(), registry->currentFileBuckets.end(), [contentType, fileType, fileSize](const auto& b) {
-        return
-          // If this FileBucket has enough free space for this file,
-          (b->storage->getAllocatedSize() - b->size) > fileSize
-          // supports this file's ContentType,
-          && std::find(b->types.begin(), b->types.end(), contentType) != b->types.end();
-        // and supports this file's FileType.
-        //&& std::find(b->fileTypes.begin(), b->fileTypes.end(), fileType) != b=>fileTypes.end();
-      });
-
-    if (maybeBucket == registry->currentFileBuckets.end()) {
-      std::cout << "No bucket available for content type: " << contentType << std::endl;
-      try {
-        lock.unlock();
-        std::promise<std::unique_ptr<FileBucket>> test;
-
-        test.set_value(registry->findOrCreate(true, wantsOwned, fileSize, std::vector<std::string>{contentType}, tags));
-        return test.get_future();
-      }
-      catch (FileBucketException e) {
-        std::cerr << e.what();
-      }
-    }
-    else {
-      std::promise<std::unique_ptr<FileBucket>> test;
-      test.set_value(std::move(*maybeBucket));
-      return test.get_future();
-    }
-  }
-}
-
-auto FileUploadingService::uploadFile(
-  std::unique_ptr<FileBucket> bucket,
-  std::unique_ptr<FileStorage::StoredFile> tmpFile,
-  std::string contentType,
-  std::string fileType,
-  std::vector<std::string> tags)
--> std::future<std::tuple<Storage::fileId, std::string>> {
-  // Great! Now generate an id for this file and store it
-  //    auto ks = assignedBucket->retrieveProperKeystore();
-  //    auto key = ks->generateKey();
-  auto storedFile = bucket->storage->add(std::move(tmpFile));
-  // TODO actually make this async
-  std::promise<std::tuple<Storage::fileId, std::string>> test;
-
-  // Copy id and throw away unique_ptr
-  auto const fbId = bucket->id;
-  std::unique_lock lock(registry->mutex);
-  registry->currentFileBuckets.push_back(std::move(bucket));
-
-  test.set_value({fbId, std::to_string(storedFile->id.value())});
-  return test.get_future();
-}
-
-
-std::future<std::tuple<std::optional<std::unique_ptr<FileBucket>>, std::optional<std::shared_ptr<FileBucketRegistryItem>>>> FileHostingService::obtainFileBucket(Storage::fileId fbId) {
-  // TODO const
-  // TODO actually make this async
-  std::promise<std::tuple<std::optional<std::unique_ptr<FileBucket>>, std::optional<std::shared_ptr<FileBucketRegistryItem>>>> test;
-  std::optional<std::unique_ptr<FileBucket>> bucket;
-
-  // TODO C++20: use atomic_shared_ptr
-  // TODO std::scoped_lock registryLock();
-
-  auto item = registry->getItem(fbId);
-  if (item.has_value()) {
-    bucket = std::move(item.value()->fileBucket.value());
-  }
-
-  test.set_value(std::make_tuple(std::move(bucket), item));
-  return test.get_future();
-}
-
-std::future<std::tuple<std::optional<std::unique_ptr<FileStorage::StoredFile>>, bool>> FileHostingService::obtainStoredFile(std::unique_ptr<FileBucket>& bucket, Storage::fileId cId, std::string fileName) {
-  // TODO actually make this async
-  std::promise<std::tuple<std::optional<std::unique_ptr<FileStorage::StoredFile>>, bool>> test;
-
-  std::optional<std::unique_ptr<FileStorage::StoredFile>> maybeFile;
-  auto exists = false;
-
-  try {
-    auto storedFile = bucket->storage->lookup(cId);
-    exists = true;
-
-    if (storedFile->location.filename() == fileName) {
-      maybeFile = std::move(storedFile);
-    }
-  }
-  catch (File::FileStorageException& e) {
-    std::ios::sync_with_stdio();
-    std::cout << e.what() << std::endl;
-  }
-
-  test.set_value(std::make_tuple(std::move(maybeFile), exists));
-  return test.get_future();
-}
-
-int FileHostingService::hostFile(std::ifstream& stream, std::unique_ptr<FileStorage::StoredFile> file, std::unique_ptr<FileBucket> bucket, std::shared_ptr<FileBucketRegistryItem>& item) {
-  // TODO safely obtain a lock to the file from the bucket?
-  stream = file->getStream<std::ifstream>();
-  auto const fbId = bucket->id;
-
-  item->fileBucket = std::move(bucket);
-
-  return fbId;
-}
-
-bool inspectBucket(std::unique_ptr<FileBucket>& fb, Size minimumSize, std::vector<std::string> types) {
-  std::cout << "filebucket types: ";
-  for (auto const ctype : fb->types) {
-    std::cout << ctype << ", ";
-  }
-  std::cout << std::endl;
-
-  // If this FileBucket has enough free space for this file,
-  auto fbSize = fb->storage->getAllocatedSize();
-  if (fb->size - fbSize >= minimumSize) {
-    // supports the specified ContentTypes,
-    auto const notSupportsCtypes = std::any_of(types.cbegin(), types.cend(), [&fb](auto const contentType) {
-      return std::find(fb->types.cbegin(), fb->types.cend(), contentType) == fb->types.end();
-    });
-    //std::cout << notSupportsCtypes << "\n";
-    // and supports this file's FileType.
-    // && std::find(b.fileTypes.begin(), b.fileTypes.end(), fileType) != b.fileTypes.end()
-    if (!notSupportsCtypes) {
-      return true;
-    }
-  }
-  return false;
-}
-
 template <typename LockType>
 std::unique_ptr<FileBucket>& FileBucketRegistryItem::getBucket(std::shared_mutex& mutex) {
   LockType lock(mutex);
@@ -207,33 +36,33 @@ std::unique_ptr<FileBucket>& FileBucketRegistryItem::getBucket(std::shared_mutex
   return fileBucket.value();
 }
 
-std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
-    bool copyable,
-    bool owned,
-    Size minimumSize,
-    std::vector<std::string> types,
-    //    std::string fileType,
-    std::vector<std::string> tags) {
-  // Introspective sort
-  // TODO optimize
-  std::shared_lock lock(mutex);
+// std::unique_ptr<FileBucket> FileBucketRegistry::findOrCreate(
+//     bool copyable,
+//     bool owned,
+//     Size minimumSize,
+//     std::vector<std::string> types,
+//     //    std::string fileType,
+//     std::vector<std::string> tags) {
+//   // Introspective sort
+//   // TODO optimize
+//   std::shared_lock lock(mutex);
 
-  for (int i = 0; i < registry.size(); i++) {
-    auto& item = registry[i];
-    auto& fbMutex = bucketMutexes[i];
-    auto& fb = item->getBucket<std::shared_lock<std::shared_mutex>>(fbMutex);
+//   for (int i = 0; i < registry.size(); i++) {
+//     auto& item = registry[i];
+//     auto& fbMutex = bucketMutexes[i];
+//     auto& fb = item->getBucket<std::shared_lock<std::shared_mutex>>(fbMutex);
 
-    if (inspectBucket(fb, minimumSize, types)) {
-      auto _fb = std::move(fb);
-      // We need to make sure the optional isn't storing a nullptr
-      item->fileBucket.reset();
-      return _fb;
-    }
-  }
-  lock.unlock();
+//     if (inspectBucket(fb, minimumSize, types)) {
+//       auto _fb = std::move(fb);
+//       // We need to make sure the optional isn't storing a nullptr
+//       item->fileBucket.reset();
+//       return _fb;
+//     }
+//   }
+//   lock.unlock();
 
-  return this->create(true, owned, this->defaultBucketSize, types, tags);
-};
+//   return this->create(true, owned, this->defaultBucketSize, types, tags);
+// };
 
 // template <typename StorageBackend>
 std::unique_ptr<FileBucket> FileBucketRegistry::create(
@@ -244,19 +73,14 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
     //    std::string fileType,
     std::vector<std::string> tags) {
   std::cout << "Registry creating new bucket" << std::endl;
-  auto const fbId = this->getUniqueFileBucketId();
 
   std::unique_lock lock(this->mutex);
   // Create the bucket, create its required directories, and assign the location
-  auto bucket = std::make_unique<FileBucket>(size, this->location, types);
-  bucket->id = fbId;
 
-  // Assign semi-permanent location
-  auto fbLocation = this->location / fs::path(std::to_string(fbId));
-  fs::create_directory(fbLocation);
+  auto bucket = std::make_unique<FileBucket>(this->getUniqueFileBucketId(), size, types);
 
-  bucket->location = fbLocation;
-  bucket->storage = std::make_unique<FileStorage::FilesystemStorage>(bucket->size, bucket->location, false);
+  // TODO Check if storage cluster has enough space for the FileBucket
+  // TODO assign virtual volume to FileBucket
 
   std::cout << "Bucket storage created" << std::endl;
 
@@ -271,43 +95,36 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
   // TODO notify nameserver?
 }
 
-FileBucket::FileBucket (Size size, fs::path registryLocation, std::vector<std::string> types)
-  : size(size), types(types)
+// FileBucket::FileBucket (Size size, std::vector<std::string> types)
+//   : size(size), types(types)
+// {
+
+  // TODO: Make sure there is enough space on storage cluster for this size
+  // But put this in the Master node, client will check beforehand
+  // auto availableSpace = fs::space(registryLocation).available;
+
+  // if (availableSpace < size) {
+  //   throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
+  // }
+// }
+
+FileBucket::FileBucket (FileBucketId id, Size size, std::vector<std::string> types)
+  : id(id), size(size), types(types)
 {
 
-  // Make sure there is enough space for this size
-  auto availableSpace = fs::space(registryLocation).available;
+  // TODO: Make sure there is enough space on storage cluster for this size
+  // But put this in the Master node, client will check beforehand
+  // auto availableSpace = fs::space(location).available;
 
-  if (availableSpace < size) {
-    throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
-  }
-}
+  // storage = std::make_unique<FileStorage::FilesystemStorage>(size, location, true);
 
-FileBucket::FileBucket (Storage::fileId id, Size size, fs::path location, std::vector<std::string> types)
-  : id(id), size(size), location(location), types(types)
-{
-
-  // Make sure there is enough space for this size
-  auto availableSpace = fs::space(location).available;
-
-  storage = std::make_unique<FileStorage::FilesystemStorage>(size, location, true);
-
-  if (availableSpace < size) {
-    throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
-  }
+  // if (availableSpace < size) {
+  //   throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
+  // }
 }
 
 //FileBucket::removeFromRegistry () {
 //  // Remove all symlinks to this bucket from MANIFEST}
-//}
-
-
-// TODO figure out return type
-//auto FileBucket::getFile(std::size_t position, std::size_t fileSize) {
-//  std::vector<std::unique_ptr<FileStorage::HaystackBlock>> test;
-//  for (auto it = this->storage->read(position); it <= it.end(position + fileSize); ++it) {
-
-//  }
 //}
 
 FileBucketRegistryItem::FileBucketRegistryItem (std::unordered_map<std::string, std::string> fields) {
@@ -322,11 +139,15 @@ FileBucketRegistryItem::FileBucketRegistryItem (std::unordered_map<std::string, 
 
 auto FileBucketRegistryItemConverter::convertField(std::string field, std::string value) {
   // TODO validate permissions etc.
-  if (field == "location") {
-    params->location = fs::path{value};
+  if (field == "virtualVolumeId") {
+    VolumeId id;
+    id = value;
+    params->virtualVolumeId = id;
   }
   else if (field == "id") {
-    params->id = std::stoul(value);
+    FileBucketId id;
+    id = value;
+    params->id = id;
   }
   else if (field == "size") {
     char* nptr;
@@ -340,10 +161,10 @@ auto FileBucketRegistryItemConverter::convertField(std::string field, std::strin
 template <typename T>
 std::unique_ptr<T> FileBucketRegistryItemConverter::convertToValue() {
   auto item = std::make_unique<T>(
-        params->id,
-        Size{params->size},
-        params->location,
-        params->types);
+	params->id,
+	Size{params->size},
+	// params->virtualVolumeId
+	params->types);
 
   return std::move(item);
 }
@@ -373,7 +194,7 @@ std::ofstream FileBucketRegistry::getRegistry() {
   return registryFile;
 }
 
-std::optional<std::shared_ptr<FileBucketRegistryItem>> FileBucketRegistry::getItem(Storage::fileId fbId) {
+std::optional<std::shared_ptr<FileBucketRegistryItem>> FileBucketRegistry::getItem(FileBucketId fbId) {
   std::optional<std::shared_ptr<FileBucketRegistryItem>> item;
 
   for (int i = 0; i < registry.size(); i++) {
@@ -391,8 +212,8 @@ std::optional<std::shared_ptr<FileBucketRegistryItem>> FileBucketRegistry::getIt
 
 void FileBucketRegistry::registerItem(std::unique_ptr<FileBucket>& fb) {
   std::unordered_map<std::string, std::string> input = {
-    {"location", static_cast<std::string>(fb->location)},
-    {"id", std::to_string(fb->id)},
+    {"virtualVolumeId", fb->virtualVolumeId.str()},
+    {"id", fb->id.str()},
     {"size", std::to_string(fb->size)},
     {"types", Utility::asCSV<std::vector<std::string>>(fb->types)}
   };
@@ -409,7 +230,7 @@ void FileBucketRegistry::registerItem(std::unique_ptr<FileBucket>& fb) {
 std::unique_ptr<FileBucket> FileBucketRegistryItem::convert(std::unique_ptr<FileBucketRegistryItemConverter>& converter) {
   // Extract contents of this registry item
   // For each field, try to find the persisted value of that field
-  for (auto field : {"id", "location", "size", "types"}) {
+  for (auto field : {"id", "virtualVolumeId", "size", "types"}) {
     auto const assignment = this->assignmentToken(field);
     auto const n = this->contents.find(assignment);
     if (n == std::string::npos) {
@@ -466,45 +287,18 @@ void FileBucketRegistry::loadRegistry() {
   }
 }
 
-Storage::fileId FileBucketRegistry::getUniqueFileBucketId() {
-  std::unique_lock<std::shared_mutex> lock(mutex);
-  auto const id = ++fileBucketUniqueId;
-  // Persist incremented id to META
-  META.clear();
-  META.seekp(0);
-  META << fileBucketUniqueId;
-  META.flush();
-  return id;
+FileBucketId FileBucketRegistry::getUniqueFileBucketId() {
+  auto* id64 = idGenerator(64);
+
+  FileBucketId output;
+  std::string s(id64);
+  output = s;
+
+  delete id64;
+  return output;
 }
 
 FileBucketRegistry::FileBucketRegistry(fs::path location, std::string registryFileName)
-  : location(location), registryFileName(registryFileName) {
-
-  if (fs::exists(this->location / "META")) {
-    try {
-      std::ifstream _meta(this->location / "META");
-      if (!_meta.is_open() || _meta.bad()) {
-        throw File::FileBucketRegistryException(*this, 2, "META file does not exist or is not available");
-      }
-
-      std::string id((std::istreambuf_iterator<char>(_meta)),
-                     std::istreambuf_iterator<char>());
-      _meta.close();
-
-      fileBucketUniqueId = static_cast<Storage::fileId>(std::stoul(id));
-    }
-    catch (std::invalid_argument e) {
-      throw File::FileBucketRegistryException(*this, 2, std::string{"META file cannot be parsed: "}.append(e.what()));
-    }
-  }
-  else {
-    fileBucketUniqueId = 0;
-  }
-
-  META = std::ofstream(this->location / "META");
-  META.seekp(0);
-  META << fileBucketUniqueId;
-  META.flush();
-}
+  : location(location), registryFileName(registryFileName) {}
 
 }

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <algorithm>
 #include <bitset>
 #include <random>
@@ -68,7 +70,7 @@ public:
   }
 
   bool operator==(const Id<fixedSize> &other) const {
-    return this->_value == other->value();
+    return this->_value == other.value();
   }
 
   friend std::ostream& operator<< (std::ostream &out, const Id<fixedSize> &id) {
@@ -118,6 +120,12 @@ public:
 
     return result.str();
   }
+
+  Id() = default;
+
+  inline Id(std::string val) {
+    this = val;
+  };
 
 protected:
   std::bitset<fixedSize> _value;

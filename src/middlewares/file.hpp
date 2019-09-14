@@ -4,83 +4,53 @@
 #include <memory>
 #include <experimental/filesystem>
 #include <unordered_map>
+#include <map>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <variant>
-#include <future>
 #include <mutex>
 #include <shared_mutex>
 #include <cinttypes>
 
 #include "../utility.hpp"
-#include "FileStorage/filesystem.hpp"
+#include "../hashing.hpp"
 
 namespace fs = std::experimental::filesystem;
 
+using namespace TinyCDN::Utility::Hashing;
 using TinyCDN::Utility::Size;
 using TinyCDN::Utility::operator""_mB;
 
 namespace TinyCDN::Middleware::File {
+  using FileBucketId = Id<64>;
+  using VolumeId = Id<32>;
 
-// struct TypedFileKeystore {
-//   // std::unordered_map<tokenType, std::ifstream& fileData> ;
-// };
-
-
-// template <typename fileType>
-// struct FileContainer {
-//   std::location location;
-// };
-
-
-// struct FileType;
-// struct StatusField;
-
-// struct BLAKEKey {
-//   // static constexpr  gensym() {
-//   //   // return blake2::s3erverseed=>create
-//   //   return ''
-//   // };
-// };
-
-
-
-//template <typename tokenType>
 /*!
  * \brief The FileBucket represents a generic persistent data store for any file data and has a fixed size.
  * A FileBucket is persisted through serialization of its fields copied into the FileBucketRegistry's REGISTRY file.
  * It can be configured to only accept a certain set of allowable filetypes as part of its contents.
  */
-// template <typename StorageBackend>
-// Temporary until architecture migration
-using FileBucketId = Storage::fileId;
-using VolumeId = int;
 struct FileBucket {
-  // const size;
-  // TypedFileKeystore retrieveKeystore();
-  // FileContainer<FileType>& retrieveFile();
-  // void stFile(tokenType key, FileContainer<FileType>& file);
-
   //! The unique id
   FileBucketId id;
   //! The maximum Size allotted for storage
   Size size;
+  //! The maximum Size allotted for storage
+  uintmax_t allocatedSize;
 
   //! The bucket's assigned virtual volume is responsible for retrieving, modifying, and deleting files
   VolumeId virtualVolumeId;
-  //! The location of where this FileBucket's storage is present
-  fs::path location;
   //! Currently a stringly-typed set of categories of allowable content (i.e. Audio, Video, etc.)
   std::vector<std::string> types;
-  //! TODO remove this in migration
-  std::unique_ptr<FileStorage::FilesystemStorage> storage;
+  // TODO remove this in migration
+  //std::unique_ptr<FileStorage::FilesystemStorage> storage;
 
 
   // distributionPolicy
 
-  FileBucket(Size size, fs::path registryLocation, std::vector<std::string> types);
-  FileBucket(Storage::fileId id, Size size, fs::path location, std::vector<std::string> types);
+  FileBucket(Size size, std::vector<std::string> types);
+  FileBucket(FileBucketId id, Size size, std::vector<std::string> types);
 };
 
 struct FileBucketRegistryItemConverter;
@@ -120,8 +90,7 @@ struct FileBucketRegistryItem {
  */
 class FileBucketRegistry {
 private:
-  std::ofstream META;
-  std::atomic<Storage::fileId> fileBucketUniqueId;
+  PseudoRandomHexFactory idGenerator;
 
 public:
   const std::string registryFileName;
@@ -133,10 +102,9 @@ public:
   std::map<int, std::shared_mutex> bucketMutexes;
 
   //! "active" public FileBuckets that reside in memory until full
-  std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
+  // std::vector<std::unique_ptr<FileBucket>> currentFileBuckets;
 
   fs::path location;
-  Size defaultBucketSize{2_mB};
 
   // std::vector<std::shared_mutex> registryMutexes;
 
@@ -145,30 +113,30 @@ public:
   //   LockType lock(registry[i]->mutex);
   // }
 
-  std::optional<std::shared_ptr<FileBucketRegistryItem>> getItem(Storage::fileId fbId);
+  std::optional<std::shared_ptr<FileBucketRegistryItem>> getItem(FileBucketId fbId);
   /*!
    * \brief registerItem converts an assumingly newly-created FileBucket and appends its configuration as a FileBucketRegistryItem into REGISTRY
    * \param fb a FileBucket instance
    */
   void registerItem(std::unique_ptr<FileBucket>& fb);
-  Storage::fileId getUniqueFileBucketId();
+
+  FileBucketId getUniqueFileBucketId();
 
   //! Safely returns a stream handle for the Registry
   // TODO: implement registry as a ring buffer
   template <typename StreamType>
   StreamType getRegistry();
 
-
   //!
   void loadRegistry();
 
-  std::unique_ptr<FileBucket> findOrCreate(
-      bool copyable,
-      bool owned,
-      Size size,
-      std::vector<std::string> types,
-      //    std::string fileType,
-      std::vector<std::string> tags);
+  // std::unique_ptr<FileBucket> findOrCreate(
+  //     bool copyable,
+  //     bool owned,
+  //     Size size,
+  //     std::vector<std::string> types,
+  //     //    std::string fileType,
+  //     std::vector<std::string> tags);
 
   //! Creates FileBuckets registered with this
   std::unique_ptr<FileBucket> create(
@@ -180,17 +148,15 @@ public:
       std::vector<std::string> tags);
 
   FileBucketRegistry(fs::path location, std::string registryFileName);
-  inline FileBucketRegistry(const FileBucketRegistry& r, std::shared_lock<std::shared_mutex> lock)
-    : location(r.location), fileBucketUniqueId(r.fileBucketUniqueId.load()), defaultBucketSize(r.defaultBucketSize), registry(r.registry) {};
 
-  inline FileBucketRegistry(const FileBucketRegistry& r) : FileBucketRegistry(r, std::shared_lock<std::shared_mutex>(r.mutex)) {};
+  FileBucketRegistry(const FileBucketRegistry& r) = delete;
 };
 
 //! A FileBucket CSV gets converted into this POD and subsequently this data is assigned to a FileBucket instance
 struct FileBucketParams {
-  Storage::fileId id{0};
+  FileBucketId id;
   uintmax_t size;
-  fs::path location;
+  VolumeId virtualVolumeId;
   // NOTE stringly typed for now
   std::vector<std::string> types;
 };
@@ -206,7 +172,7 @@ struct FileBucketRegistryItemConverter {
     return std::make_unique<FileBucketRegistryItem>(input);
   }
 
-  //! Takes a FileBucket "field" (location, id, size, or types) and assigns it to its deduced conversion value
+  //! Takes a FileBucket "field" (virtualVolumeId, id, size, or types) and assigns it to its deduced conversion value
   auto convertField(std::string field, std::string value);
 
   //! Creates a FileBucket or FileBucketRegistryItem instance by taking params and creating a FileBucket instance from it
@@ -223,69 +189,4 @@ struct FileBucketRegistryItemConverter {
   }
 };
 
-// typedef FileBucket<BLAKEKey> BLAKEBucket;
-
-class FileUploadingService {
-private:
-  std::shared_ptr<FileBucketRegistry> registry;
-
-public:
-  std::future<std::unique_ptr<FileBucket>> requestFileBucket(std::unique_ptr<FileStorage::StoredFile>& tmpFile, std::string contentType, std::string fileType, std::vector<std::string> tags, bool wantsOwned);
-
-  std::future<std::tuple<Storage::fileId, std::string>> uploadFile (std::unique_ptr<FileBucket> bucket, std::unique_ptr<FileStorage::StoredFile> tmpFile, std::string contentType, std::string fileType, std::vector<std::string> tags);
-
-  // StatusField
-  inline FileUploadingService(
-      std::shared_ptr<FileBucketRegistry> registry)
-    : registry(registry)
-  {}
-};
-
-class FileHostingService {
-private:
-  std::shared_ptr<FileBucketRegistry> registry;
-
-public:
-  // Tries to obtain a FileBucket given an id
-  std::future<std::tuple<std::optional<std::unique_ptr<FileBucket>>, std::optional<std::shared_ptr<FileBucketRegistryItem>>>> obtainFileBucket(Storage::fileId fbId);
-
-  //! Tries to obtain a StoredFile from a bucket given an id
-  // Returns a tuple of the StoredFile and a boolean value that denotes if the file exists
-  std::future<std::tuple<std::optional<std::unique_ptr<FileStorage::StoredFile>>, bool>> obtainStoredFile(std::unique_ptr<FileBucket>& bucket, Storage::fileId cId, std::string fileName);
-
-  //! Safely obtains a stream to the files contents and destroys the StoredFile instance, readds the bucket to the registry, returns the bucket id
-  int hostFile(std::ifstream& stream, std::unique_ptr<FileStorage::StoredFile> file, std::unique_ptr<FileBucket> bucket, std::shared_ptr<FileBucketRegistryItem>& item);
-
-  inline FileHostingService(
-      std::shared_ptr<FileBucketRegistry> registry)
-    : registry(registry)
-  {}
-};
 }
-
-// this should be a concept
-// struct Keystore {
-  
-// };
-
-// TODO Encryption (v0.3)
-// struct BLAKEid {
-//   char[] id;
-//   inline decrypt (b64 primary_key) {
-    
-//   };
-//   inline encrypt (b64 primary_key) {
-    
-//   };
-// };
-
-// TODO Advanced tokenization (v0.2)
-// // unique identifier token class and filetype/object
-// template <typename uid, typename m>
-// struct TokenRetrieverFactory {
-// typedef uid token_type;
-// typedef keystore<m> instance_type;
-
-// TokenRetrieverFactory(const TokenFactoryInstanceID) : token_type(token_type), {
-    
-// }};

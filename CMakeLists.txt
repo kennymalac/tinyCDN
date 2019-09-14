@@ -51,16 +51,16 @@ set(SOURCES
   src/middlewares/StorageCluster/storagecluster.hpp
   src/middlewares/Master/master.hpp
   src/middlewares/Master/master.cpp
-  src/services.hpp
-  src/services.cpp
-  src/middlewares/file_interop.h
-  src/interop.cpp
+  # src/middlewares/Client/services.hpp
+  # src/middlewares/Client/services.cpp
+  # src/middlewares/Client/client.h
+  # src/middlewares/Client/client.cpp
 )
 
 set(TEST_SOURCES
   src/test/hashing.cpp
-  src/test/fileupload.cpp
-  src/test/filehosting.cpp
+#  src/test/fileupload.cpp
+#  src/test/filehosting.cpp
   src/test/file.cpp
 )
 
@@ -88,10 +88,10 @@ add_executable(Test ${TEST_SOURCES})
 target_link_libraries(Test TinyCDN_Base Catch stdc++fs)
 add_test(NAME TestBase COMMAND Test)
 
-option(BUILD_CFFI "Generate the shared library" ON)
+option(BUILD_CFFI "Generate the shared library" OFF)
 if(BUILD_CFFI)
-  add_library(tinyCDN SHARED src/middlewares/file_interop.h src/interop.c src/interop.cpp)
-  add_executable(TestInterop src/interop.cpp)
+  add_library(tinyCDN SHARED src/middlewares/Client/client.h src/middlewares/Client/client.c src/middlewares/Client/client.cpp)
+  add_executable(TestInterop src/middlewares/Client/client.cpp)
 
   target_link_libraries(TestInterop tinyCDN)
   set_target_properties(tinyCDN PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "CXX")

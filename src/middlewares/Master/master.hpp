@@ -1,41 +1,57 @@
 #pragma once
 
-#ifdef __cplusplus
 #include <experimental/filesystem>
 #include <memory>
 namespace fs = std::experimental::filesystem;
 
 #include "../file.hpp"
-#endif
+// #include ""
 
-#ifdef __cplusplus
 namespace TinyCDN::Middleware::Master {
 
-//! Currently only holds a pointer to the FileBucketRegistry which contains information about all initiated FileBuckets.
-struct MasterSession {
-  std::shared_ptr<Middleware::File::FileBucketRegistry> registry;
+using namespace TinyCDN::Utility::Hashing;
+using namespace TinyCDN::Middleware::File;
 
-  //SessionProvisioner session;
+using VolumeId = Id<64>;
 
-  // uploadSessions;
-  // hostingSessions;
+struct MasterStorageClusterNodeConfig {
+  VolumeId id;
+  VolumeId virtualVolumeId;
+  std::string hostname;
+  int port;
 };
-//extern "C" {
-//  struct SessionProvisioner {
-//    CDNMasterSession* master;
-//    Middleware::File::FileUploadingSession* getUploadingSession() {
-//      return new Middleware::File::FileUploadingSession;
-//    };
+struct StorageClusterRequest;
 
+class MasterRequest {
+  virtual void parse(std::string contents) = 0;
+};
 
-//  };
-//}
+class MasterResponse {
+  virtual void parse(std::string contents) = 0;
+};
+
+class Success {};
+class Error {
+  std::string reason;
+};
+
+class MasterRequestInitResponsePacket : MasterRequest {
+  // static std::string name = "INIT_RESPONSE";
+  std::variant<Success, Error> callerStatus;
+};
+
 class MasterNode {
-// TODO private
 public:
+  std::unique_ptr<Middleware::File::FileBucketRegistry> registry;
 
-  //! The spawned session store which stores current sessions
-  std::unique_ptr<MasterSession> session;
+  // HTTP frontend: implement the following
+  // parseMasterStorageClusterRequest(std::string message); -> MasterRequest
+  // parseMasterClientRequest(std::string message); -> MasterRequest
+
+  MasterResponse receiveMasterCommand(MasterRequest request);
+  // Consider using std::future<StorageClusterResponse>
+  void sendStorageClusterCommand(StorageClusterRequest request);
+
 
   /*
     spawn CDN from new registry
@@ -46,22 +62,59 @@ public:
   //! If this MasterNode was opened from a pre-existing REGISTRY file that was created before running the current program instance
   bool existing;
 
-  //! Initializes the session's registry, starts the MasterSession process (TODO)
+  //! Loads an input JSON configuration
+  void loadConfig(std::ifstream config);
+  //! Initializes the FileBucketRegistry and connects to Storage cluster (TODO)
   void spawnCDN();
 
-  MasterNode(bool existing) : existing(existing) {
-    session = std::make_unique<MasterSession>();
-  }
+  bool inspectFileBucket(std::unique_ptr<FileBucket>& fb, Size minimumSize, std::vector<std::string> types);
+
+  MasterNode(bool existing) : existing(existing) {}
+
+private:
+  std::vector<MasterStorageClusterNodeConfig> storageClusterNodeConfigs;
+
+  // TODO: object pool of services
+
+  /*
+    This is where we can create the most threads.
+    Each service will exist in its own thread.
+    Facilitates communication from client to send user to storage node
+  */
+  // std::unique_ptr<MasterFileUploadingService> uploadingService;
+  // TODO look into how to redirect from Master -> Storage node on a single HTTP request
+  // std::unique_ptr<MasterFileHostingService> hostingService;
+
+  // TODO pool of services... see above
+  std::mutex uploadServiceMutex;
+  std::mutex hostingServiceMutex;
 };
 
 struct MasterNodeSingleton {
   static MasterNode* getInstance(bool existing = false, bool spawn = false);
 };
 
+/*!
+ *\brief Copyable object that allows protected access to the program's single MasterNode instance
+*/
+class MasterSession {
+  // Only shared because we would like to copy MasterSession. All locks will be unique_locks
+  std::shared_mutex masterNodeMutex;
+
+  //! Returns a raw pointer to the master node along with a lock that should be unlocked once the master node is no longer needed
+  inline std::tuple<std::unique_lock<std::shared_mutex>, MasterNode*> getMasterNode() {
+    // acquire master unique_lock
+    // timeout for mutex?
+
+    //    masterSession.masterNodeMutex;
+    std::unique_lock<std::shared_mutex> lock(masterNodeMutex);
+
+    return { std::move(lock), singleton.getInstance() };
+  }
+
+private:
+  MasterNodeSingleton singleton;
+};
+
+
 }
-#else
-typedef struct MasterNode MasterNode;
-typedef struct MasterNodeSingleton MasterNodeSingleton;
-typedef struct StoredFile StoredFile;
-typedef struct FileBucket FileBucket;
-#endif

@@ -16,6 +16,8 @@ struct VolumeParams {
   VolumeParams(VolumeId id, uintmax_t size) : id(id), size(size) {};
 };
 
+
+// id=AFTAWAFT#2233;location=/blahblah/blah;filebuckets=ID1,ID2,ID3,ID4,ID5
 //! Converts volumes from a CSV into a POD into an object instance
 struct VolumeCSVMarshaller {
   std::unique_ptr<VolumeParams> params;
@@ -43,7 +45,7 @@ struct VolumeCSVMarshaller {
 };
 
 // JSON because this may be read by other programs and will not grow very large
-struct VirtualVolumeJsonMarshaller  {
+struct VirtualVolumeJsonMarshaller {
   // TODO decide what JSON library to use
 };
 }

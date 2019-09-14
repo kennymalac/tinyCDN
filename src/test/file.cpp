@@ -5,8 +5,9 @@
 
 #include "include/catch.hpp"
 
-#include "src/middlewares/Master/master.hpp"
 #include "src/middlewares/file.hpp"
+#include "src/middlewares/Master/master.hpp"
+#include "src/middlewares/StorageCluster/storagecluster.hpp"
 
 namespace file = TinyCDN::Middleware::File;
 namespace storage = TinyCDN::Middleware::FileStorage;
@@ -18,129 +19,245 @@ using namespace TinyCDN::Middleware::Master;
 
 namespace fs = std::experimental::filesystem;
 
-using fbInputArgs = std::tuple<bool, bool, Size, std::vector<std::string>, std::vector<std::string>>;
+using fbInputArgs = std::tuple<Size, std::vector<std::string>;
 
 
 auto static fbArgs = std::vector<fbInputArgs>{
-  std::make_tuple(false, false, Size{1_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test2")}),
-  std::make_tuple(false, false, Size{2_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test2")})
+  std::make_tuple(Size{1_mB}, std::vector<std::string>{std::string("test")}),
+  std::make_tuple(Size{2_mB}, std::vector<std::string>{std::string("test")})
 };
 
 SCENARIO("A new CDN is created") {
 
-  GIVEN("a new MasterNodeSingleton") {
-    auto* master = (new MasterNodeSingleton)->getInstance(false);
+  GIVEN("a new Master Session and StorageCluster") {
+    MasterSession masterSession;
+    auto [master, masterLock] = masterSession.getMasterNode();
     master->existing = false;
 
-    WHEN("the master is spawned") {
-      master->spawnCDN();
-      THEN("it creates an empty REGISTRY file") {
-        REQUIRE(fs::is_empty(fs::path{"REGISTRY"}) == true);
+    StorageClusterSession storageClusterSession;
+    auto [storageCluster, storageClusterLock] = storageClusterSession.getStorageClusterNode();
+    storageCluster->existing = false;
+
+
+    WHEN("the Master is spawned without a valid configuration") {
+      THEN("it raises an error") {
+	REQUIRE_THROWS_AS( master->spawnCDN(), Master::Exceptions::MasterNodeException );
+      }
+    }
+
+    // WHEN("The storage cluster is spawned without a valid configuration") {
+    // TODO when a storage cluster is created...
+    WHEN("The storage cluster is spawned with a valid configuration") {
+      storageCluster->configure(storageClusterSession->loadConfig(fs::path{"storage.json"}));
+      storageClusterSession->spawn();
+
+      // TODO test for TCP server on port 6498
+      // TODO networking tests
+      // REQUIRE(storageClusterSession.hostname == "127.0.0.1");
+      // REQUIRE(storageClusterSession.port == 5498);
+      // NOTE do we want to create the limit of volumes straight away???
+      THEN("Four 1GB volumes are created under a single virtual volume") {
+	REQUIRE( storageCluster->virtualVolume.id == VolumeId{"a32b8963a2084ba7"} );
+	REQUIRE( storageCluster->virtualVolume.storageVolumeManager.volumes.size() == 4 );
+	REQUIRE( fs::is_empty(fs::path{"VOLUMES"}) == false );
+	// TODO test Marshaller elsewhere
+
+	for (auto kv : storageCluster->virtualVolume.storageVolumeManager.volumes) {
+	  // Size is 1GB
+	  REQUIRE( kv.second.size == Size{1_gB} );
+
+	  // Allocated size thus far is 0
+	  REQUIRE( kv.second->storage->getAllocatedSize() == Size{0_kB} );
+
+	  // Storage is Filesystem storage driver
+	  auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(kv.second.storage);
+	  REQUIRE( typeof(storage) == typeof(StorageVolume<FileStorage::FilesystemStorage>) );
+	  // TODO in volume test, check that limit in JSON config is respected
+	}
+      }
+    }
+
+    // WHEN("the master is spawned with an invalid storage cluster configuration") {
+    WHEN("the master is spawned with a valid configuration") {
+      master->configure(session->loadConfig(fs::path{"master.json"}));
+      masterSession->spawn();
+
+      THEN("the Master configuration matches the file, it creates an empty REGISTRY file") {
+	REQUIRE(master->id == UUID4{"9498038e-3e97-45c3-8b92-19073fada165")};
+	// TODO networking tests
+	// REQUIRE(masterSession.hostname == "127.0.0.1");
+	// REQUIRE(masterSession.port == 5498);
+
+	// TODO test for presence of client_nodes and storage_nodes
+
+	REQUIRE( fs::is_empty(fs::path{"REGISTRY"}) == true );
+	// REQUIRE();
 
       AND_WHEN("FileBuckets are created by the FileBucketRegistry") {
 
-        std::vector<std::unique_ptr<file::FileBucket>> fileBuckets;
+	std::vector<std::unique_ptr<file::FileBucket>> fileBuckets;
 
-        auto const& fbRegistry = master->session->registry;
-        // Factory function for adding FileBuckets
-        auto addBucket = [&fbRegistry]
-            (auto t, auto t2, auto t3, auto t4, auto t5) {
-          return fbRegistry->create(t, t2, t3, t4, t5);
-        };
+	auto const& fbRegistry = master->registry;
+	// Factory function for adding FileBuckets
+	auto addBucket = [&fbRegistry]
+	    (auto t, auto t2) {
+	  return fbRegistry->create(t, t2);
+	};
 
-        for (auto spec : fbArgs) {
-          fileBuckets.emplace_back(std::apply(addBucket, spec));
-        }
+	for (auto spec : fbArgs) {
+	  fileBuckets.emplace_back(std::apply(addBucket, spec));
+	}
 
-        THEN("each FileBucket has an associated FileBucketRegistryItem and its REGISTRY file is populated with the each FileBucketRegistryItem contents") {
-          REQUIRE( fbRegistry->registry.size() == fileBuckets.size() );
+	THEN("each FileBucket has an associated FileBucketRegistryItem, a virtual volume assigned, mapping to volume ids exists, and its REGISTRY file is populated with the each FileBucketRegistryItem contents") {
+	  REQUIRE( fbRegistry->registry.size() == fileBuckets.size() );
 
-          file::FileBucketRegistryItemConverter converter;
-          for (unsigned int i = 0; i < static_cast<unsigned int>(fileBuckets.size()); i++) {
-            // Acquire the registry item
-            auto registryItem = fbRegistry->registry[i];
+	  // Get all volume ids that are in virtual volume
+	  std::vector<VolumeId> allVolumeIds;
+	  for (auto kv : storageCluster->virtualVolume.storageVolumeManager.volumes) {
+	    allVolumeIds.push_back(kv.first);
+	  }
 
-            auto const clonedItem = converter.convertInput(registryItem->contents);
-            REQUIRE( registryItem->contents == clonedItem->contents );
-          }
+	  file::FileBucketRegistryItemConverter converter;
 
-          REQUIRE(fs::is_empty(fs::path{"REGISTRY"}) == false);
+	  for (unsigned int i = 0; i < static_cast<unsigned int>(fileBuckets.size()); i++) {
+	    // Acquire the registry item
+	    auto registryItem = fbRegistry->registry[i];
+	    // Virtual volume is assigned
+	    REQUIRE(registryItem->fileBucket.virtualVolumeId == VolumeId{"a32b8963a2084ba7"});
+	    // Test that a volume is assigned to this bucket
+	    auto volumeIds = storageVolume.virtualVolume.getFileBucketVolumeIds(registryItem->fileBucket.id);
+	    // NOTE/TODO: do we want to assign this straight away? if bucket is known to be very large, it will have to "spill over" into different volumes. Test that in volume test
+	    REQUIRE(volumeIds.size() == 1);
+	    auto fbVolumeId = volumeIds[0];
 
-          std::string line;
-          auto registryFile = fbRegistry->getRegistry<std::ifstream>();
+	    // One of the volumes has been assigned to the bucket
+	    // TODO do we want to always evenly distribute the buckets to the volumes?
+	    REQUIRE( std::any_of(allVolumeIds.cbegin(), allVolumeIds.cend(), [&fbVolumeId](auto vId){ return fbVolumeId == vId; }) );
 
-          unsigned int counter = 0;
-          auto const len = fbRegistry->registry.size();
-          while (getline(registryFile, line)) {
-            REQUIRE( line == fbRegistry->registry[counter++]->contents );
-          }
+	    auto const clonedItem = converter.convertInput(registryItem->contents);
+	    REQUIRE( registryItem->contents == clonedItem->contents );
+	  }
 
-          REQUIRE( counter == fbArgs.size() );
-        }
+	  REQUIRE( fs::is_empty(fs::path{"REGISTRY"}) == false );
+
+	  std::string line;
+	  auto registryFile = fbRegistry->getRegistry<std::ifstream>();
+
+	  unsigned int counter = 0;
+	  auto const len = fbRegistry->registry.size();
+	  while (getline(registryFile, line)) {
+	    REQUIRE( line == fbRegistry->registry[counter++]->contents );
+	  }
+
+	  REQUIRE( counter == fbArgs.size() );
+	}
       }
       }
+
+      masterLock.unlock();
+      storageClusterLock.unlock();
     }
   }
 };
 
 SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
-  GIVEN("a persisted MasterNode with persisted buckets") {
-    auto* master = (new MasterNodeSingleton)->getInstance(true);
+  GIVEN("a persisted MasterNode with persisted buckets and StorageClusterNode with persisted volumes") {
+    MasterSession masterSession;
+    auto [master, masterLock] = masterSession.getMasterNode();
     master->existing = true;
 
+    StorageClusterSession storageClusterSession;
+    auto [storageCluster, storageClusterLock] = storageClusterSession.getStorageClusterNode();
+    storageCluster->existing = true;
+
+    WHEN("the storage cluster is spawned") {
+      storageClusterSession->spawn();
+      THEN("The fileBucket volume DB is initialized within a Virtual Volume and the Storage Cluster node loads the volumes into memory") {
+	REQUIRE( storageCluster.virtualVolume->id == VolumeId{"a32b8963a2084ba7"} );
+	REQUIRE( storageCluster.virtualVolume.storageVolumeManager.volumes.size() == 4 );
+
+	for (auto kv : storageCluster.virtualVolume->storageVolumeManager.volumes) {
+	  // Size is 1GB
+	  REQUIRE( kv.second->size == Size{1_gB} );
+
+	  // Allocated size thus far is 0
+	  REQUIRE( kv.second->storage->getAllocatedSize() == Size{0_kB} );
+
+	  // Storage is Filesystem storage driver
+	  auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(kv.second->storage);
+	  REQUIRE( typeof(storage) == typeof(StorageVolume<FileStorage::FilesystemStorage>) );
+	}
+      }
+    }
+
     WHEN("the master is spawned") {
-      master->spawnCDN();
+      masterSession->spawn();
       THEN("The registry is initialized and it loads its FileBuckets into memory") {
+	REQUIRE(master->id == UUID4{"9498038e-3e97-45c3-8b92-19073fada165")};
 
-        auto &fbRegistry = master->session->registry;
-        auto findBucket = [&fbRegistry]
-            (auto t, auto t2, auto t3, auto t4, auto t5) {
-          return fbRegistry->findOrCreate(t, t2, t3, t4, t5);
-        };
+	auto &fbRegistry = master->registry;
+	auto findBucket = [&fbRegistry]
+	  (auto id) {
+	  return fbRegistry->getBucket(id);
+	};
 
-        REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
+	REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
 
-        using fbTestProps = std::tuple<storage::fileId&, Size, Size&, fs::path, std::vector<std::string>&, std::vector<std::string>&>;
+	// using fbTestProps = std::tuple<FileBucketId&, Size, Size&, std::vector<std::string>&>;
 
-        std::vector<std::unique_ptr<Size>> fbSizes;
-        std::vector<std::vector<std::string>> fbTypes;
-        std::vector<storage::fileId> fbIds;
+	// Get all volume ids that are in virtual volume
+	std::vector<VolumeId> allVolumeIds;
+	for (auto kv : storageCluster->virtualVolume.storageVolumeManager.volumes) {
+	  allVolumeIds.push_back(kv.first);
+	}
 
-        for (unsigned int i = 0; i < static_cast<unsigned int>(fbArgs.size()); i++) {
-          auto const fbArg = fbArgs[i];
-          auto bucket = std::apply(findBucket, fbArg);
-          auto const& registryItem = fbRegistry->registry[i];
-          std::cout << "registryItem: " << registryItem->contents << "\n";
+	std::vector<std::unique_ptr<Size>> fbSizes;
+	std::vector<std::vector<std::string>> fbTypes;
+	// TODO test ids from previous scenario
+	// std::vector<FileBucketId> fbIds;
 
-          // Ownership of the FileBucket was transferred to this scope
-          REQUIRE( registryItem->fileBucket.has_value() == false );
+	for (unsigned int i = 0; i < static_cast<unsigned int>(fbArgs.size()); i++) {
+	  auto const fbArg = fbArgs[i];
+	  auto bucket = std::apply(findBucket, fbArg);
+	  auto const& registryItem = fbRegistry->registry[i];
+	  std::cout << "registryItem: " << registryItem->contents << "\n";
 
-          // Test the fields of the FileBucket
-          fbSizes.emplace_back(std::make_unique<Size>(static_cast<Size>(std::get<2>(fbArgs[i]))));
-          fbTypes.emplace_back(static_cast<std::vector<std::string>>(std::get<4>(fbArgs[i])));
-          fbIds.emplace_back(static_cast<storage::fileId>(i+1));
+	  // Ownership of the FileBucket was transferred to this scope
+	  REQUIRE( registryItem->fileBucket.has_value() == false );
 
-          REQUIRE( bucket->id == fbIds[i] );
-          REQUIRE( bucket->location == (fbRegistry->location / fs::path{std::to_string(fbIds[i])}) );
-          REQUIRE( bucket->size == *fbSizes[i].get() );
+	  // Test the fields of the FileBucket
+	  fbSizes.emplace_back(std::make_unique<Size>(static_cast<Size>(std::get<0>(fbArgs[i]))));
+	  fbTypes.emplace_back(static_cast<std::vector<std::string>>(std::get<1>(fbArgs[i])));
+	  // FileBucketId fbId{std::string{i+1}};
+	  // fbIds.emplace_back(fbId);
 
-          REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
+	  // REQUIRE( bucket->id == fbIds[i] );
+	  REQUIRE( bucket->virtualVolumeId == VolumeId{"a32b8963a2084ba7"} );
+	  REQUIRE( bucket->size == *fbSizes[i].get() );
 
-          // Test FileBucket storage
-          REQUIRE( bucket->storage->getAllocatedSize() == Size{0_kB} );
+	  REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
 
-          // Tear down filebucket later
-          master->session->registry->registry[i]->fileBucket = std::move(bucket);
-        }
+	  // Test FileBucket allocated size
+	  REQUIRE( bucket->getAllocatedSize() == Size{0_kB} );
+
+	  // Test that a volume was assigned to this bucket
+	  auto volumeIds = storageVolume.virtualVolume.getFileBucketVolumeIds(registryItem->fileBucket.id);
+	  REQUIRE(volumeIds.size() == 1);
+	  auto fbVolumeId = volumeIds[0];
+
+	  // One of the volumes has been assigned to the bucket
+	  // TODO make sure volume id is the same as before
+	  REQUIRE( std::any_of(allVolumeIds.cbegin(), allVolumeIds.cend(), [&fbVolumeId](auto vId){ return fbVolumeId == vId; }) );
+	}
       }
     }
 
     // Tear down
-    for (auto item : master->session->registry->registry) {
-      item->fileBucket.value()->storage->destroy();
-    }
+    fs::remove("VOLUMES");
     fs::remove("REGISTRY");
-    fs::remove("META");
+
+    masterLock.unlock();
+    storageClusterLock.unlock();
   }
 };

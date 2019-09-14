@@ -1,14 +1,13 @@
 #pragma once
 
-#include "Master/master.hpp"
 #ifdef __cplusplus
 #include <string.h>
 #include <optional>
 #include <mutex>
 #include <memory>
-#include "file.hpp"
-#include "src/utility.hpp"
-#include "FileStorage/storedfile.hpp"
+#include "../file.hpp"
+#include "../../utility.hpp"
+#include "../FileStorage/storedfile.hpp"
 #endif
 
 #ifdef __cplusplus
@@ -30,24 +29,31 @@ extern "C" {
     std::unique_ptr<ChunkedCursor> cursor;
   };
 #else
+typedef struct StoredFile StoredFile;
+typedef struct FileBucket FileBucket;
 typedef struct FileUploadingSession FileUploadingSession;
 typedef struct FileHostingSession FileHostingSession;
 typedef struct ChunkedCursor ChunkedCursor;
 #endif
 
   struct FileUploadInfo {
+    char* fbId;
     char* temporaryLocation;
     char* contentType;
     char* fileType;
     int wantsOwned;
     char* tags;
 #ifdef __cplusplus
-    inline FileUploadInfo(char* t,
-                          char* ct,
-                          char* ft,
-                          char* tgs,
-                          int owned)
+    inline FileUploadInfo(char* fId,
+			  char* t,
+			  char* ct,
+			  char* ft,
+			  char* tgs,
+			  int owned)
       : wantsOwned(owned) {
+      fbId = new char[strlen(fbId)+1];
+      strcpy(fbId, fId);
+
       temporaryLocation = new char[strlen(t)+1];
       strcpy(temporaryLocation, t);
 
@@ -65,31 +71,34 @@ typedef struct ChunkedCursor ChunkedCursor;
 
   struct HostedFileInfo {
     // TODO base32 id
-    int id;
+    char* id;
     // TODO wide chars (utf-8)
     char* fileName;
     // TODO owned buckets
     int owned;
 #ifdef __cplusplus
-    inline HostedFileInfo(int id,
-                          char* fName,
-                          int owned = 0)
-      : id(id), owned(owned) {
+    inline HostedFileInfo(char* id,
+			  char* fName,
+			  int owned = 0)
+      : owned(owned) {
+      id = new char[strlen(id)+1];
+      strcpy(fbId, fName);
       fileName = new char[strlen(fName)+1];
       strcpy(fileName, fName);
     }
 #endif
   };
 
-  struct FileUploadInfo* FileUploadInfo_new (char* temporaryLocation,
-                                             char* contentType,
-                                             char* fileType,
-                                             char* tags,
-                                             int wantsOwned);
+  struct FileUploadInfo* FileUploadInfo_new (char* fbId,
+					     char* temporaryLocation,
+					     char* contentType,
+					     char* fileType,
+					     char* tags,
+					     int wantsOwned);
 
-  struct HostedFileInfo* HostedFileInfo_new (int id,
-                                             char* fName,
-                                             int owned);
+  struct HostedFileInfo* HostedFileInfo_new (char* id,
+					     char* fName,
+					     int owned);
 
   struct FileUploadingSession* FileUploadingSession_new ();
   void FileUploadingSession_delete (struct FileUploadingSession* session);
@@ -98,21 +107,21 @@ typedef struct ChunkedCursor ChunkedCursor;
 
   struct FileHostingSession* FileHostingSession_new ();
   void FileHostingSession_delete (struct FileHostingSession* session);
-  int FileHostingSession_getBucket (struct FileHostingSession* session, int id);
+  char* FileHostingSession_getBucket (struct FileHostingSession* session, char* id);
   int FileHostingSession_getContentFile (struct FileHostingSession* _session, struct HostedFileInfo* info);
   void FileHostingSession_getChunkingHandle (struct FileHostingSession* session);
   int FileHostingSession_yieldChunk (struct FileHostingSession* session, unsigned char* cffiResult);
 
   // C++ functions
   struct FileUploadInfo* cc_FileUploadInfo_new (char* temporaryLocation,
-                                                char* contentType,
-                                                char* fileType,
-                                                char* tags,
-                                                int wantsOwned);
+						char* contentType,
+						char* fileType,
+						char* tags,
+						int wantsOwned);
 
-  struct HostedFileInfo* cc_HostedFileInfo_new (int id,
-                                                char* fName,
-                                                int owned);
+  struct HostedFileInfo* cc_HostedFileInfo_new (char* id,
+						char* fName,
+						int owned);
 
   struct FileUploadingSession* cc_FileUploadingSession_new ();
   void cc_FileUploadingSession_delete (struct FileUploadingSession* session);
@@ -121,7 +130,7 @@ typedef struct ChunkedCursor ChunkedCursor;
 
   struct FileHostingSession* cc_FileHostingSession_new ();
   void cc_FileHostingSession_delete (struct FileHostingSession* session);
-  int cc_FileHostingSession_getBucket (struct FileHostingSession* session, int id);
+  char* cc_FileHostingSession_getBucket (struct FileHostingSession* session, char* id);
   int cc_FileHostingSession_getContentFile (struct FileHostingSession* _session, struct HostedFileInfo* info);
   void cc_FileHostingSession_getChunkingHandle (struct FileHostingSession* session);
   int cc_FileHostingSession_yieldChunk (struct FileHostingSession* session, unsigned char* cffiResult);

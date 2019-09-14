@@ -1,0 +1,14 @@
+{
+    // "master": "master-config.json",
+    // "storageClusters": "storagecluster-config.json",
+    "id": "d0eb0a17-0def-4482-9bfb-d1e8c438f4c7",
+    "hostname": "127.0.0.1",
+    "port": 7498,
+    "master_nodes": [
+	{
+	    "id": "9498038e-3e97-45c3-8b92-19073fada165"
+	    "hostname": "127.0.0.1",
+	    "port": 5498,
+	}
+    ]
+}

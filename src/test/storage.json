@@ -1,0 +1,20 @@
+{
+    "id": "17dd8b5c-8963-4ba7-a208-14f2c0df5ba6",
+    "hostname": "127.0.0.1",
+    "port": 6498,
+    "virtual_volume": {
+	"id": "a32b8963a2084ba7",
+	"volumes": {
+	    "size": "1GB",
+	    "limit": 4,
+	    "storage": {
+		"default_type": "filesystem",
+		"type_whitelist": ["filesystem"]
+	    },
+	    "replication": {
+		"default_strategy": "none",
+		"strategy_whitelist": ["none"]
+	    }
+	}
+    }
+}

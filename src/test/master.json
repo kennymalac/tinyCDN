@@ -1,0 +1,22 @@
+{
+    // "master": "master-config.json",
+    // "storageClusters": "storagecluster-config.json",
+    "id": "9498038e-3e97-45c3-8b92-19073fada165",
+    "hostname": "127.0.0.1",
+    "port": 5498,
+    "client_nodes": [
+	{
+	    "id": "d0eb0a17-0def-4482-9bfb-d1e8c438f4c7",
+	    "hostname": "127.0.0.1",
+	    "port": 7498
+	}
+    ],
+    "storage_nodes": [
+	{
+	    "id": "17dd8b5c-8963-4ba7-a208-14f2c0df5ba6",
+	    "virtual_volume_id": "a32b8963a2084ba7",
+	    "hostname": "127.0.0.1",
+	    "port": 6498
+	}
+    ]
+}
