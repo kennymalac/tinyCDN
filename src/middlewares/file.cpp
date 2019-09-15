@@ -13,7 +13,6 @@
 namespace fs = std::experimental::filesystem;
 
 #include "file.hpp"
-#include "exceptions.hpp"
 #include "FileStorage/filesystem.hpp"
 
 using TinyCDN::Utility::Size;
@@ -102,10 +101,6 @@ std::unique_ptr<FileBucket> FileBucketRegistry::create(
   // TODO: Make sure there is enough space on storage cluster for this size
   // But put this in the Master node, client will check beforehand
   // auto availableSpace = fs::space(registryLocation).available;
-
-  // if (availableSpace < size) {
-  //   throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
-  // }
 // }
 
 FileBucket::FileBucket (FileBucketId id, Size size, std::vector<std::string> types)
@@ -117,10 +112,6 @@ FileBucket::FileBucket (FileBucketId id, Size size, std::vector<std::string> typ
   // auto availableSpace = fs::space(location).available;
 
   // storage = std::make_unique<FileStorage::FilesystemStorage>(size, location, true);
-
-  // if (availableSpace < size) {
-  //   throw FileBucketException(*this, 0, "FileBucket cannot be created as filesystem has no space.");
-  // }
 }
 
 //FileBucket::removeFromRegistry () {
@@ -174,24 +165,12 @@ StreamType FileBucketRegistry::getRegistry() {}
 
 template<>
 std::ifstream FileBucketRegistry::getRegistry() {
-  std::ifstream registryFile(this->location / this->registryFileName);
-
-  if (!registryFile.is_open() || registryFile.bad()) {
-    throw FileBucketRegistryException(*this, 0, "Registry file could not be opened for reading");
-  }
-
-  return registryFile;
+  return registryFile(this->location / this->registryFileName);
 }
 
 template<>
 std::ofstream FileBucketRegistry::getRegistry() {
-  std::ofstream registryFile(this->location / this->registryFileName, std::ios::out | std::ios::app);
-
-  if (!registryFile.is_open() || registryFile.bad()) {
-    throw FileBucketRegistryException(*this, 0, "Registry file could not be opened for writing");
-  }
-
-  return registryFile;
+  return registryFile(this->location / this->registryFileName, std::ios::out | std::ios::app);
 }
 
 std::optional<std::shared_ptr<FileBucketRegistryItem>> FileBucketRegistry::getItem(FileBucketId fbId) {
@@ -246,12 +225,7 @@ std::unique_ptr<FileBucket> FileBucketRegistryItem::convert(std::unique_ptr<File
     std::cout << assignment << value << "\n";
     std::cout << std::flush;
     // TODO dispatch table...
-    try {
-      converter->convertField(field, value);
-    }
-    catch (std::invalid_argument e) {
-      throw FileBucketRegistryItemException(*this, 1, std::string{"Failed to convert field "}.append(field).append(" with value ").append(value).append(" ").append(e.what()));
-    }
+    converter->convertField(field, value);
   }
 
   return converter->convertToValue<FileBucket>();
@@ -272,14 +246,8 @@ void FileBucketRegistry::loadRegistry() {
     auto item = converter->convertInput(line);
 
     // Set the bucket to the registry item's converted FileBucket
-    try {
-      item->fileBucket = item->convert(converter);
-      registry.emplace_back(std::move(item));
-    }
-    catch (FileBucketRegistryItemException e) {
-      converter->reset();
-      continue;
-    }
+    item->fileBucket = item->convert(converter);
+    registry.emplace_back(std::move(item));
 
     std::cout << "fb types: " << registry[0]->fileBucket.value()->types[0] << std::endl;
 

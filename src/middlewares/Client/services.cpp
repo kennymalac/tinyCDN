@@ -41,19 +41,13 @@ std::future<std::tuple<std::optional<std::unique_ptr<FileStorage::StoredFile>>, 
   std::optional<std::unique_ptr<FileStorage::StoredFile>> maybeFile;
   auto exists = false;
 
-  try {
-    // TODO ask master to contact storage cluster
-    auto storedFile = bucket->storage->lookup(cId);
+  // TODO ask master to contact storage cluster
+  auto storedFile = bucket->storage->lookup(cId);
 
-    exists = true;
+  exists = true;
 
-    if (storedFile->location.filename() == fileName) {
-      maybeFile = std::move(storedFile);
-    }
-  }
-  catch (File::FileStorageException& e) {
-    std::ios::sync_with_stdio();
-    std::cout << e.what() << std::endl;
+  if (storedFile->location.filename() == fileName) {
+    maybeFile = std::move(storedFile);
   }
 
   test.set_value(std::make_tuple(std::move(maybeFile), exists));

@@ -6,14 +6,12 @@
 #include <unordered_map>
 #include <optional>
 
-#include "../exceptions.hpp"
 #include "../../utility.hpp"
 #include "../../hashing.hpp"
 #include "../FileStorage/filesystem.hpp"
 
 namespace TinyCDN::Middleware::Volume {
 
-using namespace TinyCDN::Utility::Exceptions;
 using namespace TinyCDN::Utility::Hashing;
 using namespace TinyCDN::Middleware::File;
 
@@ -50,9 +48,7 @@ public:
 template <typename storageType>
 class StorageVolume : public Volume {
 public:
-  inline void resize() {
-    throw new NotImplementedException();
-  }
+  inline void resize() {}
 
   inline void destroy() {
     this->storage->destroy();

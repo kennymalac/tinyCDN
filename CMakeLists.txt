@@ -32,8 +32,6 @@ set(SOURCES
   src/middlewares/file.hpp
   src/middlewares/FileStorage/storedfile.hpp
   src/middlewares/FileStorage/storedfile.cpp
-  src/middlewares/exceptions.hpp
-  src/middlewares/exceptions.cpp
   src/middlewares/file.cpp
   src/middlewares/FileStorage/storage.hpp
   src/middlewares/FileStorage/storage.hpp

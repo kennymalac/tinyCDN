@@ -38,7 +38,7 @@ auto MasterFileUploadingService::requestFileBucket(
 
     if (maybeBucket == registry->currentFileBuckets.end()) {
       std::cout << "No bucket available for content type: " << contentType << std::endl;
-      throw new std::runtime_error("No bucket available");
+      return {};
     }
     else {
       std::promise<std::unique_ptr<FileBucket>> test;

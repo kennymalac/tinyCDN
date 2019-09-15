@@ -114,7 +114,6 @@ SCENARIO("The CDN with Persisting FileBucket storage and a uploaded file is rest
           THEN("The storedFile is no longer in scope, the allocatedSize was decreased, and a lookup fails") {
             REQUIRE( storedFile == nullptr );
             REQUIRE( fileBucket->storage->getAllocatedSize() == 0 );
-            REQUIRE_THROWS_AS( fileBucket->storage->lookup(static_cast<storage::fileId>(1)), file::FileStorageException );
           }
         }
       }

@@ -6,7 +6,6 @@
 #include <tuple>
 #include "../../utility.hpp"
 #include "storedfile.hpp"
-#include "../exceptions.hpp"
 
 using TinyCDN::Utility::Size;
 namespace TinyCDN::Middleware::FileStorage {

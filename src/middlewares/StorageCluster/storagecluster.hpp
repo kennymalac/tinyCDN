@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <mutex>
-#include <exception>
 #include <experimental/filesystem>
 
 #include "../Volume/volume.hpp"
@@ -91,33 +90,20 @@ public:
   void spawn();
 
   void startSession(fs::path configFileLocation) {
-    if (started) {
-      throw std::logic_error("StorageClusterSession already started!");
-    }
+    if (started) return;
 
     // TODO: Networking - Wait forever for initialization packet from Master
     // wait ()
     std::ifstream configFile(this->configFileLocation);
 
-    if (!configFile.is_open() || configFile.bad()) {
-      // TODO Notify Master of failure to load
-
-      throw std::logic_error("Config file for StorageCluster could not be loaded!");
-    }
+    // TODO Notify Master of failure to load
+    if (!configFile.is_open() || configFile.bad()) return;
 
     StorageClusterNodeJsonMarshaller marshaller;
 
     std::string config((std::istreambuf_iterator<char>(configFile)),
 		       std::istreambuf_iterator<char>());
     configFile.close();
-
-    // try {
-    //   // singleton.instance = marshaller.deserialize(config);
-    //   started = true;
-    // }
-    // catch (MarshallerException e) {
-    //   std::cerr << e.what();
-    // }
   }
 
   //! Returns a raw pointer to the storageCluster node along with a lock that should be unlocked once the storageCluster node is no longer needed

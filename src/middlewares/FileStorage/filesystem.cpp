@@ -58,16 +58,11 @@ std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
   // auto search = fileMutexes.find(id);
   auto lock = std::make_unique<std::shared_lock<std::shared_mutex>>(fileMutexes[id]);
 
-  try {
-    auto stFile = std::make_unique<StoredFile>(
-      fs::read_symlink(this->location / this->linkDirName / std::to_string(id)), false, std::move(lock));
+  auto stFile = std::make_unique<StoredFile>(
+    fs::read_symlink(this->location / this->linkDirName / std::to_string(id)), false, std::move(lock));
 
-    stFile->id = id;
-    return stFile;
-  }
-  catch (fs::filesystem_error& e) {
-    throw File::FileStorageException(0, e.what());
-  }
+  stFile->id = id;
+  return stFile;
 }
 
 std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> file)
@@ -106,7 +101,7 @@ std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> f
       allocatedSize = std::make_unique<Size>(getAllocatedSize() - file->size);
       storageLock.unlock();
       storeLock.unlock();
-      throw File::FileStorageException(0, "Temporary file could not be created for StoredFile in specified location", *file);
+      return;
     }
   }
   // Uniqueness of filename in this directory is now guaranteed, so unlock this
@@ -129,9 +124,7 @@ std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> f
 
 void FilesystemStorage::remove(std::unique_ptr<StoredFile> file)
 {
-  if (!file->id.has_value()) {
-    throw File::FileStorageException(0, "StoredFile file has no id", std::make_optional<StoredFile>(*file));
-  }
+  if (!file->id.has_value()) return;
 
   std::unique_lock<std::mutex> storageLock(mutex);
 
@@ -162,49 +155,36 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
   if (!preallocated) {
     META = std::ofstream(this->location / "META");
 
-    if (!META.is_open() || META.bad()) {
-      throw File::FileStorageException(3, "META file cannot be created");
-    }
+    if (!META.is_open() || META.bad()) return;
 
     allocatedSize = std::make_unique<Size>(0);
     allocate();
   }
   else {
     std::ifstream _meta(this->location / "META");
-    if (!_meta.is_open() || _meta.bad()) {
-      throw File::FileStorageException(2, "META file does not exist or is not available");
-    }
+    if (!_meta.is_open() || _meta.bad()) return;
 
     std::string idsAndSize((std::istreambuf_iterator<char>(_meta)),
                            std::istreambuf_iterator<char>());
     _meta.close();
     std::cout << "idsAndSize " << idsAndSize << std::endl;
 
-    try {
-      auto delim = idsAndSize.find(";");
-      storeUniqueId = std::stoul(idsAndSize.substr(0, delim));
-      std::cout << "storeUniqueId: " << storeUniqueId << std::endl;
-      auto nextDelim = idsAndSize.find(";", delim+1);
+    auto delim = idsAndSize.find(";");
+    storeUniqueId = std::stoul(idsAndSize.substr(0, delim));
+    std::cout << "storeUniqueId: " << storeUniqueId << std::endl;
+    auto nextDelim = idsAndSize.find(";", delim+1);
 
-      fileUniqueId = std::stoul(idsAndSize.substr(delim+1, nextDelim));
-      std::cout << "fileUniqueId: " << fileUniqueId << std::endl;
-      delim = nextDelim;
+    fileUniqueId = std::stoul(idsAndSize.substr(delim+1, nextDelim));
+    std::cout << "fileUniqueId: " << fileUniqueId << std::endl;
+    delim = nextDelim;
 
-      char* nptr;
-      auto justSize = idsAndSize.substr(delim+1);
+    char* nptr;
+    auto justSize = idsAndSize.substr(delim+1);
 
-      allocatedSize = std::make_unique<Size>(std::strtoumax(justSize.c_str(), &nptr, 10));
-    }
-    catch (std::invalid_argument e) {
-      throw File::FileStorageException(-1, std::string{"ERROR converting META file: "}.append(e.what()));
-    }
+    allocatedSize = std::make_unique<Size>(std::strtoumax(justSize.c_str(), &nptr, 10));
 
     META = std::ofstream(this->location / "META");
     persist();
-
-    if (!META.is_open() || META.bad()) {
-      throw File::FileStorageException(-1, "META file cannot be opened or is corrupted");
-    }
   }
 
 }

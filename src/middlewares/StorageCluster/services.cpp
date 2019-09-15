@@ -11,7 +11,7 @@ auto StoragFileUploadingService::uploadFile(
   // TODO actually make this async
   std::promise<std::tuple<FileBucketId, std::string>> test;
 
-  // Copy id and throw away unique_ptr
+  // Copy id and toss away unique_ptr
   auto const fbId = bucket->id;
   std::unique_lock lock(registry->mutex);
   registry->currentFileBuckets.push_back(std::move(bucket));

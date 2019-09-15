@@ -42,12 +42,6 @@ SCENARIO("A new CDN is created") {
     // storageCluster->existing = false;
 
 
-    WHEN("the Master is spawned without a valid configuration") {
-      THEN("it raises an error") {
-	// REQUIRE_THROWS_AS( master->spawnCDN(), Master::Exceptions::MasterNodeException );
-      }
-    }
-
     // WHEN("The storage cluster is spawned without a valid configuration") {
     // TODO when a storage cluster is created...
     WHEN("The storage cluster is spawned with a valid configuration") {

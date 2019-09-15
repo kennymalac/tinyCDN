@@ -30,7 +30,7 @@ const char* hexCharToBinary(T c) {
   case 'D': return "1101";
   case 'E': return "1110";
   case 'F': return "1111";
-  default: throw new std::logic_error("Not a hexidecimal character");
+  default: return "????";
   }
 }
 
