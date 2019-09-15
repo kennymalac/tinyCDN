@@ -20,6 +20,13 @@ struct MasterStorageClusterNodeConfig {
   std::string hostname;
   int port;
 };
+
+struct MasterParams {
+  UUID4 id;
+  // clusternodes
+  // clientnodes
+};
+
 struct StorageClusterRequest;
 
 class MasterRequest {
@@ -52,6 +59,8 @@ public:
   // Consider using std::future<StorageClusterResponse>
   void sendStorageClusterCommand(StorageClusterRequest request);
 
+  void configure(MasterParams params);
+  void spawnCDN();
 
   /*
     spawn CDN from new registry
@@ -64,8 +73,6 @@ public:
 
   //! Loads an input JSON configuration
   void loadConfig(std::ifstream config);
-  //! Initializes the FileBucketRegistry and connects to Storage cluster (TODO)
-  void spawnCDN();
 
   bool inspectFileBucket(std::unique_ptr<FileBucket>& fb, Size minimumSize, std::vector<std::string> types);
 
@@ -98,8 +105,15 @@ struct MasterNodeSingleton {
  *\brief Copyable object that allows protected access to the program's single MasterNode instance
 */
 class MasterSession {
+public:
   // Only shared because we would like to copy MasterSession. All locks will be unique_locks
   std::shared_mutex masterNodeMutex;
+
+
+ //! Initializes the FileBucketRegistry and connects to Storage cluster (TODO)
+  void spawn();
+
+  MasterParams loadConfig(fs::path location);
 
   //! Returns a raw pointer to the master node along with a lock that should be unlocked once the master node is no longer needed
   inline std::tuple<std::unique_lock<std::shared_mutex>, MasterNode*> getMasterNode() {

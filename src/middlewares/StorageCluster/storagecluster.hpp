@@ -51,6 +51,8 @@ public:
 
   // std::map<SessionId, StorageFileHostingSession>
 
+  void configure(StorageClusterParams params);
+
   StorageClusterNode() {};
 
 private:
@@ -84,6 +86,9 @@ public:
   // Only shared because we would like to copy StorageClusterSession. All locks will be unique_locks
   std::shared_mutex storageClusterNodeMutex;
   fs::path configFileLocation;
+
+  StorageClusterParams loadConfig(fs::path location);
+  void spawn();
 
   void startSession(fs::path configFileLocation) {
     if (started) {

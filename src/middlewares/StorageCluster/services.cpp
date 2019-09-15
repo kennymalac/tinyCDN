@@ -1,4 +1,4 @@
-auto FileUploadingService::uploadFile(
+auto StoragFileUploadingService::uploadFile(
   std::unique_ptr<FileBucket> bucket,
   std::unique_ptr<FileStorage::StoredFile> tmpFile,
   std::string contentType,

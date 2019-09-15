@@ -23,8 +23,9 @@ using TinyCDN::Utility::Size;
 using TinyCDN::Utility::operator""_mB;
 
 namespace TinyCDN::Middleware::File {
-  using FileBucketId = Id<64>;
-  using VolumeId = Id<32>;
+
+using FileBucketId = Id<64>;
+using VolumeId = Id<64>;
 
 /*!
  * \brief The FileBucket represents a generic persistent data store for any file data and has a fixed size.

@@ -20,7 +20,7 @@ using namespace TinyCDN::Middleware::File;
 using TinyCDN::Utility::Size;
 
 using FileBucketId = Id<64>;
-using VolumeId = Id<32>;
+using VolumeId = Id<64>;
 
 /*!
  * \brief Abstract Static size blob
@@ -48,7 +48,7 @@ public:
  StorageVolumes are replicated at a lower level than buckets. Buckets with default replication settings will be replicated as part of a volume manager's replication strategy.
 */
 template <typename storageType>
-class StorageVolume : Volume {
+class StorageVolume : public Volume {
 public:
   inline void resize() {
     throw new NotImplementedException();
@@ -111,7 +111,7 @@ private:
  * The simple difference between a VirtualVolume and a StorageVolume is that a virtual volume is an alias to a single Volume that manages many volumes internally to efficently store large amounts of files.
  A FileBucket references a single virtual volume instead of the set of StorageVolumes that store its files.
 */
-class VirtualVolume : Volume {
+class VirtualVolume : public Volume {
 public:
   fs::path location;
   std::optional<std::vector<VolumeId>> getFileBucketVolumeIds(FileBucketId id);

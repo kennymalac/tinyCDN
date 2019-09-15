@@ -15,11 +15,14 @@ namespace storage = TinyCDN::Middleware::FileStorage;
 using namespace std::placeholders;
 using namespace TinyCDN;
 using namespace TinyCDN::Utility;
+using namespace TinyCDN::Middleware;
 using namespace TinyCDN::Middleware::Master;
+using namespace TinyCDN::Middleware::Volume;
+using namespace TinyCDN::Middleware::StorageCluster;
 
 namespace fs = std::experimental::filesystem;
 
-using fbInputArgs = std::tuple<Size, std::vector<std::string>;
+using fbInputArgs = std::tuple<Size, std::vector<std::string>>;
 
 
 auto static fbArgs = std::vector<fbInputArgs>{
@@ -31,25 +34,25 @@ SCENARIO("A new CDN is created") {
 
   GIVEN("a new Master Session and StorageCluster") {
     MasterSession masterSession;
-    auto [master, masterLock] = masterSession.getMasterNode();
+    auto [masterLock, master] = masterSession.getMasterNode();
     master->existing = false;
 
     StorageClusterSession storageClusterSession;
-    auto [storageCluster, storageClusterLock] = storageClusterSession.getStorageClusterNode();
-    storageCluster->existing = false;
+    auto [storageClusterLock, storageCluster] = storageClusterSession.getStorageClusterNode();
+    // storageCluster->existing = false;
 
 
     WHEN("the Master is spawned without a valid configuration") {
       THEN("it raises an error") {
-	REQUIRE_THROWS_AS( master->spawnCDN(), Master::Exceptions::MasterNodeException );
+	// REQUIRE_THROWS_AS( master->spawnCDN(), Master::Exceptions::MasterNodeException );
       }
     }
 
     // WHEN("The storage cluster is spawned without a valid configuration") {
     // TODO when a storage cluster is created...
     WHEN("The storage cluster is spawned with a valid configuration") {
-      storageCluster->configure(storageClusterSession->loadConfig(fs::path{"storage.json"}));
-      storageClusterSession->spawn();
+      storageCluster->configure(storageClusterSession.loadConfig(fs::path{"storage.json"}));
+      storageClusterSession.spawn();
 
       // TODO test for TCP server on port 6498
       // TODO networking tests
@@ -57,12 +60,12 @@ SCENARIO("A new CDN is created") {
       // REQUIRE(storageClusterSession.port == 5498);
       // NOTE do we want to create the limit of volumes straight away???
       THEN("Four 1GB volumes are created under a single virtual volume") {
-	REQUIRE( storageCluster->virtualVolume.id == VolumeId{"a32b8963a2084ba7"} );
-	REQUIRE( storageCluster->virtualVolume.storageVolumeManager.volumes.size() == 4 );
+	REQUIRE( storageCluster->virtualVolume->id == VolumeId{"a32b8963a2084ba7"} );
+	REQUIRE( storageCluster->virtualVolume->storageVolumeManager.volumes.size() == 4 );
 	REQUIRE( fs::is_empty(fs::path{"VOLUMES"}) == false );
 	// TODO test Marshaller elsewhere
 
-	for (auto kv : storageCluster->virtualVolume.storageVolumeManager.volumes) {
+	for (auto kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
 	  // Size is 1GB
 	  REQUIRE( kv.second.size == Size{1_gB} );
 
@@ -79,8 +82,8 @@ SCENARIO("A new CDN is created") {
 
     // WHEN("the master is spawned with an invalid storage cluster configuration") {
     WHEN("the master is spawned with a valid configuration") {
-      master->configure(session->loadConfig(fs::path{"master.json"}));
-      masterSession->spawn();
+      master->configure(masterSession.loadConfig(fs::path{"master.json"}));
+      masterSession.spawn();
 
       THEN("the Master configuration matches the file, it creates an empty REGISTRY file") {
 	REQUIRE(master->id == UUID4{"9498038e-3e97-45c3-8b92-19073fada165")};
@@ -113,7 +116,7 @@ SCENARIO("A new CDN is created") {
 
 	  // Get all volume ids that are in virtual volume
 	  std::vector<VolumeId> allVolumeIds;
-	  for (auto kv : storageCluster->virtualVolume.storageVolumeManager.volumes) {
+	  for (auto kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
 	    allVolumeIds.push_back(kv.first);
 	  }
 
@@ -164,15 +167,15 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
   GIVEN("a persisted MasterNode with persisted buckets and StorageClusterNode with persisted volumes") {
     MasterSession masterSession;
-    auto [master, masterLock] = masterSession.getMasterNode();
+    auto [masterLock, master] = masterSession.getMasterNode();
     master->existing = true;
 
     StorageClusterSession storageClusterSession;
-    auto [storageCluster, storageClusterLock] = storageClusterSession.getStorageClusterNode();
+    auto [storageClusterLock, storageCluster] = storageClusterSession.getStorageClusterNode();
     storageCluster->existing = true;
 
     WHEN("the storage cluster is spawned") {
-      storageClusterSession->spawn();
+      storageClusterSession.spawn();
       THEN("The fileBucket volume DB is initialized within a Virtual Volume and the Storage Cluster node loads the volumes into memory") {
 	REQUIRE( storageCluster.virtualVolume->id == VolumeId{"a32b8963a2084ba7"} );
 	REQUIRE( storageCluster.virtualVolume.storageVolumeManager.volumes.size() == 4 );
@@ -192,7 +195,7 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
     }
 
     WHEN("the master is spawned") {
-      masterSession->spawn();
+      masterSession.spawn();
       THEN("The registry is initialized and it loads its FileBuckets into memory") {
 	REQUIRE(master->id == UUID4{"9498038e-3e97-45c3-8b92-19073fada165")};
 
@@ -208,7 +211,7 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
 	// Get all volume ids that are in virtual volume
 	std::vector<VolumeId> allVolumeIds;
-	for (auto kv : storageCluster->virtualVolume.storageVolumeManager.volumes) {
+	for (auto kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
 	  allVolumeIds.push_back(kv.first);
 	}
 
