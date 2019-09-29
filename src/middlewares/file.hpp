@@ -37,7 +37,7 @@ struct FileBucket {
   FileBucketId id;
   //! The maximum Size allotted for storage
   Size size;
-  //! The maximum Size allotted for storage
+  //! How much has been allocated already
   uintmax_t allocatedSize;
 
   //! The bucket's assigned virtual volume is responsible for retrieving, modifying, and deleting files
@@ -115,6 +115,8 @@ public:
   // }
 
   std::optional<std::shared_ptr<FileBucketRegistryItem>> getItem(FileBucketId fbId);
+  //std::unique_ptr<FileBucket> getBucket(FileBucketId fbId); // use std::future?
+
   /*!
    * \brief registerItem converts an assumingly newly-created FileBucket and appends its configuration as a FileBucketRegistryItem into REGISTRY
    * \param fb a FileBucket instance
@@ -141,8 +143,6 @@ public:
 
   //! Creates FileBuckets registered with this
   std::unique_ptr<FileBucket> create(
-      bool copyable,
-      bool owned,
       Size size,
       std::vector<std::string> types,
       //    std::string fileType,

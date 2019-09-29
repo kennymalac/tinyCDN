@@ -69,11 +69,11 @@ public:
   // TODO delete default, volume constructors
 };
 
-//! All StorageVolume types
-using AnyStorageVolume = std::variant<StorageVolume<FileStorage::FilesystemStorage>>;
+//! All StorageVolume types (monostate might be required here b/c storagevolume not default constructible)
+using AnyStorageVolume = std::variant<std::unique_ptr<StorageVolume<FileStorage::FilesystemStorage>>>;
 // Could be any StorageVolume instance, or a non-existent value
 // Could use std::optional, but wrapping variant would make std::visit less usable
-using MaybeAnyStorageVolume = std::variant<std::monostate, StorageVolume<FileStorage::FilesystemStorage>>;
+using MaybeAnyStorageVolume = std::variant<std::monostate, std::unique_ptr<StorageVolume<FileStorage::FilesystemStorage>>>;
 
 //class BackupVolume : Volume;
 
@@ -87,7 +87,7 @@ public:
   void setSize(uintmax_t size);
 
   void assignStorageVolume(std::shared_ptr<FileBucket> fb);
-  std::unique_ptr<AnyStorageVolume> getStorageVolume(VolumeId id);
+  AnyStorageVolume getStorageVolume(VolumeId id);
   template <typename T>
   std::unique_ptr<StorageVolume<T>> createStorageVolume(fs::path location);
   // replicateVolume
@@ -96,7 +96,7 @@ public:
     volumeMutexes.erase(id);
   };
 
-  std::unordered_map<VolumeId, std::unique_ptr<MaybeAnyStorageVolume>, IdHasher> volumes;
+  std::unordered_map<VolumeId, MaybeAnyStorageVolume, IdHasher> volumes;
 
   inline StorageVolumeManager(uintmax_t size) : size(size) {}
 
@@ -114,7 +114,7 @@ private:
 class VirtualVolume : public Volume {
 public:
   fs::path location;
-  std::optional<std::vector<VolumeId>> getFileBucketVolumeIds(FileBucketId id);
+  std::vector<VolumeId> getFileBucketVolumeIds(FileBucketId id);
   //! Also modifies storage volume manager's size
   void setSize(uintmax_t size);
   StorageVolumeManager storageVolumeManager;

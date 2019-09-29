@@ -16,7 +16,7 @@ void StorageVolumeManager::removeVolume(VolumeId id)
 
 }
 
-std::optional<std::vector<VolumeId> > TinyCDN::Middleware::Volume::VirtualVolume::getVolumeIds()
+std::vector<VolumeId> TinyCDN::Middleware::Volume::VirtualVolume::getVolumeIds()
 {
 
 }

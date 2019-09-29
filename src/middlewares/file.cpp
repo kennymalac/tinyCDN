@@ -66,8 +66,6 @@ std::unique_ptr<FileBucket>& FileBucketRegistryItem::getBucket(std::shared_mutex
 
 // template <typename StorageBackend>
 std::unique_ptr<FileBucket> FileBucketRegistry::create(
-    bool copyable,
-    bool owned,
     Size size,
     std::vector<std::string> types,
     //    std::string fileType,

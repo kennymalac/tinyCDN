@@ -69,6 +69,12 @@ public:
     return *this;
   }
 
+  // Id& operator=(const char* val) {
+  //   _value = std::string{val};
+
+  //   return *this;
+  // }
+
   bool operator==(const Id<fixedSize> &other) const {
     return this->_value == other.value();
   }
@@ -88,6 +94,7 @@ public:
 
     auto const str = _value.to_string();
 
+    // Take each byte and convert it into hex using stringstream
     for (int i = 0; i < str.length(); i+=4) {
       auto const val = std::stoi(str.substr(i,4), nullptr, 2);
       hex << std::hex << val;
@@ -124,8 +131,14 @@ public:
   Id() = default;
 
   inline Id(std::string val) {
-    this = val;
+    _value = std::bitset<fixedSize>(hexToBinary(val));
   };
+
+  // inline Id(const char* val) {
+  //   this = std::string{val};
+
+  //   return *this;
+  // }
 
 protected:
   std::bitset<fixedSize> _value;

@@ -22,12 +22,12 @@ using namespace TinyCDN::Middleware::StorageCluster;
 
 namespace fs = std::experimental::filesystem;
 
-using fbInputArgs = std::tuple<Size, std::vector<std::string>>;
+using fbInputArgs = std::tuple<Size, std::vector<std::string>, std::vector<std::string>>;
 
 
 auto static fbArgs = std::vector<fbInputArgs>{
-  std::make_tuple(Size{1_mB}, std::vector<std::string>{std::string("test")}),
-  std::make_tuple(Size{2_mB}, std::vector<std::string>{std::string("test")})
+  std::make_tuple(Size{1_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test")}),
+  std::make_tuple(Size{2_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test")})
 };
 
 SCENARIO("A new CDN is created") {
@@ -60,23 +60,28 @@ SCENARIO("A new CDN is created") {
       // REQUIRE(storageClusterSession.port == 5498);
       // NOTE do we want to create the limit of volumes straight away???
       THEN("Four 1GB volumes are created under a single virtual volume") {
-	REQUIRE( storageCluster->virtualVolume->id == VolumeId{"a32b8963a2084ba7"} );
+	REQUIRE( storageCluster->virtualVolume->id == VolumeId{std::string{"a32b8963a2084ba7"}} );
 	REQUIRE( storageCluster->virtualVolume->storageVolumeManager.volumes.size() == 4 );
 	REQUIRE( fs::is_empty(fs::path{"VOLUMES"}) == false );
 	// TODO test Marshaller elsewhere
 
-	for (auto kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
-	  // Size is 1GB
-	  REQUIRE( kv.second.size == Size{1_gB} );
+        for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
+	  // NOTE only visit is allowed here - unique_ptr is owned by variant.
+          std::visit([](auto&& volume) {
+            if constexpr(std::is_same_v<decltype(volume), StorageVolume<FileStorage::FilesystemStorage>&>) {
+              // Size is 1GB
+              REQUIRE( volume.size == Size{1_gB} );
 
-	  // Allocated size thus far is 0
-	  REQUIRE( kv.second->storage->getAllocatedSize() == Size{0_kB} );
+              // Allocated size thus far is 0
+              REQUIRE( volume->storage->getAllocatedSize() == Size{0_kB} );
 
-	  // Storage is Filesystem storage driver
-	  auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(kv.second.storage);
-	  REQUIRE( typeof(storage) == typeof(StorageVolume<FileStorage::FilesystemStorage>) );
-	  // TODO in volume test, check that limit in JSON config is respected
-	}
+              // Storage is Filesystem storage driver
+              auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(volume.storage);
+              REQUIRE( typeid(storage) == typeid(StorageVolume<FileStorage::FilesystemStorage>) );
+              // TODO in volume test, check that limit in JSON config is respected
+            }
+	  }, kv.second);
+        }
       }
     }
 
@@ -86,7 +91,7 @@ SCENARIO("A new CDN is created") {
       masterSession.spawn();
 
       THEN("the Master configuration matches the file, it creates an empty REGISTRY file") {
-	REQUIRE(master->id == UUID4{"9498038e-3e97-45c3-8b92-19073fada165")};
+	REQUIRE(master->id == UUID4{std::string{"9498038e-3e97-45c3-8b92-19073fada165"}});
 	// TODO networking tests
 	// REQUIRE(masterSession.hostname == "127.0.0.1");
 	// REQUIRE(masterSession.port == 5498);
@@ -103,8 +108,8 @@ SCENARIO("A new CDN is created") {
 	auto const& fbRegistry = master->registry;
 	// Factory function for adding FileBuckets
 	auto addBucket = [&fbRegistry]
-	    (auto t, auto t2) {
-	  return fbRegistry->create(t, t2);
+	  (auto t, auto t2, auto t3) {
+          return fbRegistry->create(t, t2, t3);
 	};
 
 	for (auto spec : fbArgs) {
@@ -116,7 +121,7 @@ SCENARIO("A new CDN is created") {
 
 	  // Get all volume ids that are in virtual volume
 	  std::vector<VolumeId> allVolumeIds;
-	  for (auto kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
+	  for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
 	    allVolumeIds.push_back(kv.first);
 	  }
 
@@ -125,10 +130,11 @@ SCENARIO("A new CDN is created") {
 	  for (unsigned int i = 0; i < static_cast<unsigned int>(fileBuckets.size()); i++) {
 	    // Acquire the registry item
 	    auto registryItem = fbRegistry->registry[i];
+	    auto fileBucket = std::move(registryItem->fileBucket.value());
 	    // Virtual volume is assigned
-	    REQUIRE(registryItem->fileBucket.virtualVolumeId == VolumeId{"a32b8963a2084ba7"});
+	    REQUIRE(fileBucket->virtualVolumeId == VolumeId{"a32b8963a2084ba7"});
 	    // Test that a volume is assigned to this bucket
-	    auto volumeIds = storageVolume.virtualVolume.getFileBucketVolumeIds(registryItem->fileBucket.id);
+	    auto volumeIds = storageCluster->virtualVolume->getFileBucketVolumeIds(fileBucket->id);
 	    // NOTE/TODO: do we want to assign this straight away? if bucket is known to be very large, it will have to "spill over" into different volumes. Test that in volume test
 	    REQUIRE(volumeIds.size() == 1);
 	    auto fbVolumeId = volumeIds[0];
@@ -166,6 +172,7 @@ SCENARIO("A new CDN is created") {
 SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
   GIVEN("a persisted MasterNode with persisted buckets and StorageClusterNode with persisted volumes") {
+
     MasterSession masterSession;
     auto [masterLock, master] = masterSession.getMasterNode();
     master->existing = true;
@@ -177,33 +184,35 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
     WHEN("the storage cluster is spawned") {
       storageClusterSession.spawn();
       THEN("The fileBucket volume DB is initialized within a Virtual Volume and the Storage Cluster node loads the volumes into memory") {
-	REQUIRE( storageCluster.virtualVolume->id == VolumeId{"a32b8963a2084ba7"} );
-	REQUIRE( storageCluster.virtualVolume.storageVolumeManager.volumes.size() == 4 );
+	REQUIRE( storageCluster->virtualVolume->id == VolumeId{"a32b8963a2084ba7"} );
+	REQUIRE( storageCluster->virtualVolume->storageVolumeManager.volumes.size() == 4 );
 
-	for (auto kv : storageCluster.virtualVolume->storageVolumeManager.volumes) {
-	  // Size is 1GB
-	  REQUIRE( kv.second->size == Size{1_gB} );
+        for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
+	  // NOTE only visit is allowed here - unique_ptr is owned by variant.
+          std::visit([](auto&& volume) {
+            if constexpr(std::is_same_v<decltype(volume), StorageVolume<FileStorage::FilesystemStorage>&>) {
+              // Size is 1GB
+              REQUIRE( volume.size == Size{1_gB} );
 
-	  // Allocated size thus far is 0
-	  REQUIRE( kv.second->storage->getAllocatedSize() == Size{0_kB} );
+              // Allocated size thus far is 0
+              REQUIRE( volume->storage->getAllocatedSize() == Size{0_kB} );
 
-	  // Storage is Filesystem storage driver
-	  auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(kv.second->storage);
-	  REQUIRE( typeof(storage) == typeof(StorageVolume<FileStorage::FilesystemStorage>) );
-	}
+              // Storage is Filesystem storage driver
+              auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(volume.storage);
+              REQUIRE( typeid(storage) == typeid(StorageVolume<FileStorage::FilesystemStorage>) );
+              // TODO in volume test, check that limit in JSON config is respected
+            }
+	  }, kv.second);
+        }
       }
     }
 
     WHEN("the master is spawned") {
       masterSession.spawn();
       THEN("The registry is initialized and it loads its FileBuckets into memory") {
-	REQUIRE(master->id == UUID4{"9498038e-3e97-45c3-8b92-19073fada165")};
+	REQUIRE(master->id == UUID4{std::string{"9498038e-3e97-45c3-8b92-19073fada165"}});
 
 	auto &fbRegistry = master->registry;
-	auto findBucket = [&fbRegistry]
-	  (auto id) {
-	  return fbRegistry->getBucket(id);
-	};
 
 	REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
 
@@ -211,8 +220,8 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
 	// Get all volume ids that are in virtual volume
 	std::vector<VolumeId> allVolumeIds;
-	for (auto kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
-	  allVolumeIds.push_back(kv.first);
+        for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
+          allVolumeIds.push_back(kv.first);
 	}
 
 	std::vector<std::unique_ptr<Size>> fbSizes;
@@ -222,9 +231,11 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
 	for (unsigned int i = 0; i < static_cast<unsigned int>(fbArgs.size()); i++) {
 	  auto const fbArg = fbArgs[i];
-	  auto bucket = std::apply(findBucket, fbArg);
 	  auto const& registryItem = fbRegistry->registry[i];
 	  std::cout << "registryItem: " << registryItem->contents << "\n";
+
+          auto& fbMutex = fbRegistry->bucketMutexes[i];
+          auto& bucket = registryItem->getBucket<std::shared_lock<std::shared_mutex>>(fbMutex);
 
 	  // Ownership of the FileBucket was transferred to this scope
 	  REQUIRE( registryItem->fileBucket.has_value() == false );
@@ -242,10 +253,10 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 	  REQUIRE( fbRegistry->registry.size() == fbArgs.size() );
 
 	  // Test FileBucket allocated size
-	  REQUIRE( bucket->getAllocatedSize() == Size{0_kB} );
+	  REQUIRE( bucket->allocatedSize == Size{0_kB} );
 
 	  // Test that a volume was assigned to this bucket
-	  auto volumeIds = storageVolume.virtualVolume.getFileBucketVolumeIds(registryItem->fileBucket.id);
+	  auto volumeIds = storageCluster->virtualVolume->getFileBucketVolumeIds(bucket->id);
 	  REQUIRE(volumeIds.size() == 1);
 	  auto fbVolumeId = volumeIds[0];
 

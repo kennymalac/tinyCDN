@@ -49,6 +49,8 @@ class MasterRequestInitResponsePacket : MasterRequest {
 
 class MasterNode {
 public:
+  UUID4 id;
+
   std::unique_ptr<Middleware::File::FileBucketRegistry> registry;
 
   // HTTP frontend: implement the following

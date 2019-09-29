@@ -43,6 +43,9 @@ public:
   UUID4 id;
   std::string name;
   fs::path location;
+  //! If this StorageClusterNode was opened from a pre-existing config file that was created before running the current program instance
+  bool existing;
+
 
   std::unique_ptr<VirtualVolume> virtualVolume;
 
