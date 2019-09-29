@@ -77,6 +77,8 @@ using MaybeAnyStorageVolume = std::variant<std::monostate, std::unique_ptr<Stora
 
 //class BackupVolume : Volume;
 
+struct VirtualVolume;
+
 /*!
  * \brief Responsible for allocating, replicating, and removing volumes as necessary
  */
@@ -86,7 +88,6 @@ public:
   //! Checks if size is going DOWN, if so, will replicate elsewhere?
   void setSize(uintmax_t size);
 
-  void assignStorageVolume(std::shared_ptr<FileBucket> fb);
   AnyStorageVolume getStorageVolume(VolumeId id);
   template <typename T>
   std::unique_ptr<StorageVolume<T>> createStorageVolume(fs::path location);
@@ -119,6 +120,14 @@ public:
   void setSize(uintmax_t size);
   StorageVolumeManager storageVolumeManager;
 
+  //! Increments size by newly added volume size, adds to volDb
+  // In the future, committing different storage volume types may have different side-effects.
+  template <typename T>
+  uintmax_t commitStorageVolume(std::unique_ptr<StorageVolume<T>> volume);
+
+  //! Adds volume to fbVolDb and asynchronously persists the mapping to the disk
+  void addFileBucketVolume(FileBucketId fbId, VolumeId volId);
+
   // void loadConfig();
   //! TODO: how to split the db file up?
   void loadDb(std::ifstream persistedDb);
@@ -129,7 +138,7 @@ public:
       // TODO move below to getStorageVolume
 
       // if (auto volume = std::get_if<StorageVolume<FileStorage::FilesystemStorage>>(r.second)) {
-      //	volume->destroy();
+p      //	volume->destroy();
       // }
       // else {
       //	// This should never EVER happen! monostate is ruled out when mutex is acquired
@@ -150,9 +159,9 @@ private:
   std::ofstream configFile;
 
   uintmax_t size;
+    // Care has to be taken for adding new volumes, because the lookup of a file id means each StorageVolume will have to be queried. Filebuckets are only aware of what file ids are assigned, not which volume they are stored in.
+    // Future optimization: we could add the file id to a hash table of the file id mapped to its volumeid, so that the lookup is much faster
+    // The hash table would expire file id entries that are older than a certain threshold, i.e. not accessed within a certain time period
   std::unordered_map<FileBucketId, std::vector<VolumeId>, IdHasher> fbVolDb;
-
-  //! Adds volume to fbVolDb and asynchronously persists the mapping to the disk
-  void addVolumeToFileBucket(FileBucketId fbId, VolumeId volId);
 };
 }

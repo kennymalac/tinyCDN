@@ -39,7 +39,7 @@ SCENARIO("A new CDN is created") {
 
     StorageClusterSession storageClusterSession;
     auto [storageClusterLock, storageCluster] = storageClusterSession.getStorageClusterNode();
-    // storageCluster->existing = false;
+    storageCluster->existing = false;
 
 
     WHEN("the Master is spawned without a valid configuration") {

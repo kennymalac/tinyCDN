@@ -121,10 +121,6 @@ FileBucket::FileBucket (FileBucketId id, Size size, std::vector<std::string> typ
   // }
 }
 
-//FileBucket::removeFromRegistry () {
-//  // Remove all symlinks to this bucket from MANIFEST}
-//}
-
 FileBucketRegistryItem::FileBucketRegistryItem (std::unordered_map<std::string, std::string> fields) {
   for (std::pair<std::string, std::string> pair : fields) {
     // TODO optimize

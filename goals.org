@@ -1,4 +1,4 @@
-* Storage node
+** Storage node
 *** TODO load from config
 *** TODO make volume store files
 *** TODO make virtual volume store files into volumes
@@ -22,11 +22,12 @@
 *** 
 
 * General
+** TODO Make storage class use hashing Id rather than atomic int for file ids
 ** DONE make Id class use bitset internally
 ** TODO Make client use its own namespace
-** TODO better hashing mechanism for files, non-int ids
-** TODO remove META file necessity (buckets should have uuid)
-** TODO storage node/master node distinction
+** DONE better hashing mechanism for files, non-int ids
+** DONE remove META file necessity (buckets should have uuid)
+** DONE storage node/master node distinction
 ** TODO spawnCDN should load from configuration for storage nodes
 ** TODO make FileBucketRegistry and VolumeRegistry use same base class
 ** converter changes
@@ -37,4 +38,3 @@
 ** TODO Dockerfiles for master node, storage node, and client node
 ** TODO replication strategy class (geolocation, backup, & )
 ** TODO owned filebuckets
-

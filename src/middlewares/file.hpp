@@ -92,6 +92,8 @@ struct FileBucketRegistryItem {
 class FileBucketRegistry {
 private:
   PseudoRandomHexFactory idGenerator;
+  // TODO move to metadata node
+  std::unordered_map<FileBucketId, std::vector<FileId>, IdHasher> fbFileDb;
 
 public:
   const std::string registryFileName;
@@ -108,11 +110,6 @@ public:
   fs::path location;
 
   // std::vector<std::shared_mutex> registryMutexes;
-
-  // template <typename LockType>
-  // getRegistryItem(int index) {
-  //   LockType lock(registry[i]->mutex);
-  // }
 
   std::optional<std::shared_ptr<FileBucketRegistryItem>> getItem(FileBucketId fbId);
   //std::unique_ptr<FileBucket> getBucket(FileBucketId fbId); // use std::future?
@@ -133,20 +130,15 @@ public:
   //!
   void loadRegistry();
 
-  // std::unique_ptr<FileBucket> findOrCreate(
-  //     bool copyable,
-  //     bool owned,
-  //     Size size,
-  //     std::vector<std::string> types,
-  //     //    std::string fileType,
-  //     std::vector<std::string> tags);
-
   //! Creates FileBuckets registered with this
   std::unique_ptr<FileBucket> create(
       Size size,
       std::vector<std::string> types,
       //    std::string fileType,
       std::vector<std::string> tags);
+
+  //! Registers a file id to a filebucket
+  void registerFile(FileBucketId fbId, FileId fileId);
 
   FileBucketRegistry(fs::path location, std::string registryFileName);
 
