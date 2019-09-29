@@ -72,61 +72,39 @@ SCENARIO("a user retrieves a file to the CDN") {
     // Add a file to the bucket
     master->registry->registerFile(fbId, storedFile->id);
 
-    std::cout << "Moving bucket..." << std::endl;
-    master->session->registry->registry[0]->fileBucket = std::move(fb);
-
-    auto fileId = storedFile->id.value();
+    auto fileId = storedFile->id;
 
     // Simulate a hosting Client using FileHostingSession, FileHostingService
     auto hostingService = std::make_unique<file::FileHostingService>(master->session->registry);
 
-    WHEN("the obtainFileBucket method is invoked to obtain the bucket containing the hosted file") {
-      // TODO expand these test(s)
-      std::cout << "Obtaining file bucket..." << std::endl;
-      auto [_bucket, _registryItem] = hostingService->obtainFileBucket(fbId).get();
+    WHEN("the obtainStoredFile is invoked to retrieve the StoredFile from the bucket") {
+      std::cout << "Obtaining stored file..." << std::endl;
+      masterLock.unlock();
+      auto [_sf, hasValue] = hostingService->obtainStoredFile(masterSession, bucketId, fileId, fileName).get();
+      std::cout << "Tried obtaining stored file" << std::endl;
 
-      THEN("The correct bucket is retrieved") {
-	REQUIRE( _bucket.has_value() );
-	REQUIRE( _registryItem.has_value() );
-	auto bucket = std::move(_bucket.value());
-	auto registryItem = _registryItem.value();
+      REQUIRE( hasValue );
+      REQUIRE( _sf.has_value() );
 
-	auto const bucketId = bucket->id;
+      auto sf = std::move(_sf.value());
 
-	// TODO expand these test(s)
+      REQUIRE( sf->id == storedFile->id );
 
-	REQUIRE( bucket->id == bucketId );
-	REQUIRE( fb == nullptr );
+      THEN("the hostFile method can be invoked to retrieve a stream to the file's contents") {
+	std::ifstream stream;
+	std::cout << "hosting file..." << std::endl;
+	hostingService->hostFile(stream, std::move(storedFile));
 
-	AND_WHEN("the obtainStoredFile is invoked to retrieve the StoredFile from the bucket") {
-	  std::cout << "Obtaining stored file..." << std::endl;
-	  auto [_sf, hasValue] = hostingService->obtainStoredFile(bucket, fileId, fileName).get();
-	  std::cout << "Tried obtaining stored file" << std::endl;
+	std::string contents((std::istreambuf_iterator<char>(stream)),
+			     std::istreambuf_iterator<char>());
 
-	  REQUIRE( hasValue );
-	  REQUIRE( _sf.has_value() );
-
-	  auto sf = std::move(_sf.value());
-
-	  REQUIRE( sf->id == storedFile->id );
-
-	  THEN("the hostFile method can be invoked to retrieve a stream to the file's contents") {
-	    std::ifstream stream;
-	    std::cout << "hosting file..." << std::endl;
-	    hostingService->hostFile(stream, std::move(storedFile), std::move(bucket), registryItem);
-
-	    std::string contents((std::istreambuf_iterator<char>(stream)),
-				  std::istreambuf_iterator<char>());
-
-	    REQUIRE(contents == testValue);
-	  }
-	}
+	REQUIRE(contents == testValue);
       }
     }
 
     // Clean up
-    master->session->registry->registry[0]->fileBucket.value()->storage->destroy();
+    storageCluster->virtualVolume->destroy();
+    fs::remove("VOLUMES");
     fs::remove("REGISTRY");
-    fs::remove("META");
   }
 }
