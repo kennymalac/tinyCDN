@@ -94,7 +94,7 @@ public:
   fs::path configFileLocation;
 
   StorageClusterParams loadConfig(fs::path location);
-  void spawn();
+  void spawn(StorageClusterParams config);
 
   //! Returns a raw pointer to the storageCluster node along with a lock that should be unlocked once the storageCluster node is no longer needed
   inline std::tuple<std::unique_lock<std::shared_mutex>, StorageClusterNode*> getStorageClusterNode() {

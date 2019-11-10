@@ -61,7 +61,6 @@ public:
   // Consider using std::future<StorageClusterResponse>
   void sendStorageClusterCommand(StorageClusterRequest request);
 
-  void configure(MasterParams params);
   void spawnCDN();
 
   /*
@@ -72,9 +71,6 @@ public:
 
   //! If this MasterNode was opened from a pre-existing REGISTRY file that was created before running the current program instance
   bool existing;
-
-  //! Loads an input JSON configuration
-  void loadConfig(std::ifstream config);
 
   bool inspectFileBucket(std::unique_ptr<FileBucket>& fb, Size minimumSize, std::vector<std::string> types);
 
@@ -111,9 +107,8 @@ public:
   // Only shared because we would like to copy MasterSession. All locks will be unique_locks
   std::shared_mutex masterNodeMutex;
 
-
  //! Initializes the FileBucketRegistry and connects to Storage cluster (TODO)
-  void spawn();
+  void spawn(MasterParams params);
 
   MasterParams loadConfig(fs::path location);
 

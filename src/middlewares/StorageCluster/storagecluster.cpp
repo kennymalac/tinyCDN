@@ -57,22 +57,25 @@ StorageClusterParams StorageClusterSession::loadConfig(fs::path location) {
   // Marshal config into StorageClusterParams
   StorageClusterNodeJsonMarshaller marshaller;
 
+  // TODO returns params, or returns cluster node?
+  return StorageClusterParams{};
+}
+
+void StorageClusterSession::spawn(StorageClusterParams config) {
+  if (started) {
+    throw std::logic_error("StorageClusterSession already started!");
+  }
+
+  StorageClusterNodeJsonMarshaller marshaller;
+
+  // Marshal the configuration into a object
   // try {
-  //   // singleton.instance = marshaller.deserialize(config);
+  //   // singleton.instance = marshaller.getInstance(config);
   //   started = true;
   // }
   // catch (MarshallerException e) {
   //   std::cerr << e.what();
   // }
-
-  // TODO returns params, or returns cluster node?
-  return StorageClusterParams{};
-}
-
-void StorageClusterSession::spawn() {
-  if (started) {
-    throw std::logic_error("StorageClusterSession already started!");
-  }
 
   // TODO: Networking - initialize TCP server
 

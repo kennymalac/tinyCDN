@@ -51,8 +51,8 @@ SCENARIO("A new CDN is created") {
     // WHEN("The storage cluster is spawned without a valid configuration") {
     // TODO when a storage cluster is created...
     WHEN("The storage cluster is spawned with a valid configuration") {
-      storageCluster->configure(storageClusterSession.loadConfig(fs::path{"storage.json"}));
-      storageClusterSession.spawn();
+      auto config = storageClusterSession.loadConfig(fs::path{"storage.json"});
+      storageClusterSession.spawn(config);
 
       // TODO test for TCP server on port 6498
       // TODO networking tests
@@ -87,8 +87,8 @@ SCENARIO("A new CDN is created") {
 
     // WHEN("the master is spawned with an invalid storage cluster configuration") {
     WHEN("the master is spawned with a valid configuration") {
-      master->configure(masterSession.loadConfig(fs::path{"master.json"}));
-      masterSession.spawn();
+      auto config = masterSession.loadConfig(fs::path{"master.json"});
+      masterSession.spawn(config);
 
       THEN("the Master configuration matches the file, it creates an empty REGISTRY file") {
 	REQUIRE(master->id == UUID4{std::string{"9498038e-3e97-45c3-8b92-19073fada165"}});
@@ -181,8 +181,9 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
     auto [storageClusterLock, storageCluster] = storageClusterSession.getStorageClusterNode();
     storageCluster->existing = true;
 
-    WHEN("the storage cluster is spawned") {
-      storageClusterSession.spawn();
+    WHEN("the storage cluster is spawned with a valid configuration") {
+      auto config = storageClusterSession.loadConfig(fs::path{"storage.json"});
+      storageClusterSession.spawn(config);
       THEN("The fileBucket volume DB is initialized within a Virtual Volume and the Storage Cluster node loads the volumes into memory") {
 	REQUIRE( storageCluster->virtualVolume->id == VolumeId{"a32b8963a2084ba7"} );
 	REQUIRE( storageCluster->virtualVolume->storageVolumeManager.volumes.size() == 4 );
@@ -208,7 +209,8 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
     }
 
     WHEN("the master is spawned") {
-      masterSession.spawn();
+      auto config = masterSession.loadConfig(fs::path{"master.json"});
+      masterSession.spawn(config);
       THEN("The registry is initialized and it loads its FileBuckets into memory") {
 	REQUIRE(master->id == UUID4{std::string{"9498038e-3e97-45c3-8b92-19073fada165"}});
 
