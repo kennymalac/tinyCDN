@@ -23,7 +23,7 @@ using FileBucketId = Id<64>;
 using VolumeId = Id<64>;
 
 /*!
- * \brief Abstract Static size blob
+ * \brief Abstract, statically-sized, network-identified blob
 */
 class Volume {
 public:
@@ -80,14 +80,14 @@ using MaybeAnyStorageVolume = std::variant<std::monostate, std::unique_ptr<Stora
 struct VirtualVolume;
 
 /*!
- * \brief Responsible for allocating, replicating, and removing volumes as necessary
+ * \brief Responsible for allocating, replicating, and removing volumes as necessary.
  */
 class StorageVolumeManager {
 public:
   inline uintmax_t getSize() {
     return size;
   };
-  //! Checks if size is going DOWN, if so, will replicate elsewhere?
+  //! Checks if size is going DOWN, if so, TODO will replicate elsewhere?
   inline void setSize(uintmax_t size) {
     size = size;
   };
@@ -98,6 +98,7 @@ public:
   template <typename T>
   std::unique_ptr<StorageVolume<T>> loadStorageVolume(VolumeId id, Size size, fs::path location);
   // replicateVolume
+  //! Removes a StorageVolume from the StorageVolumeManager's records
   inline void removeStorageVolume(VolumeId id) {
     volumes.erase(id);
     volumeMutexes.erase(id);
@@ -123,6 +124,7 @@ private:
 class VirtualVolume : public Volume {
 public:
   fs::path location;
+  //! Retrieves the list of VolumeIds associated with
   std::vector<VolumeId> getFileBucketVolumeIds(FileBucketId id);
   inline uintmax_t getSize() {
     return size;
@@ -134,16 +136,22 @@ public:
   };
   StorageVolumeManager storageVolumeManager;
 
-  //! Increments size by newly added volume size, adds to volDb
-  // In the future, committing different storage volume types may have different side-effects.
+  /*
+   * \brief Increments size by newly added volume size, adds to volDb.
+   * In the future, committing different storage volume types may have different side-effects.
+   * Care has to be taken for adding new volumes, because the lookup of a file id means each StorageVolume will have to be queried. Filebuckets are only aware of what file ids are assigned, not which volume they are stored in.
+   * Future optimization: we could add the file id to a hash table of the file id mapped to its volumeid, so that the lookup is much faster
+   * The hash table would expire file id entries that are older than a certain threshold, i.e. not accessed within a certain time period
+  */
   template <typename T>
   uintmax_t commitStorageVolume(std::unique_ptr<StorageVolume<T>> volume);
 
-  //! Adds volume to fbVolDb and asynchronously persists the mapping to the disk
+  //! Adds volume to fbVolDb and asynchronously persists the mapping to the disk.
   void addFileBucketVolume(FileBucketId fbId, VolumeId volId);
 
   // void loadConfig();
-  //! TODO: how to split the db file up?
+  // TODO: how to split the db file up?
+  //! Loads the FileBucket Volume Database file into memory
   void loadDb(std::ifstream persistedDb);
 
   //! Destroys the virtual volume. NOTE: will not destroy backup volumes or replicated volumes(?)
@@ -158,9 +166,7 @@ private:
   std::ofstream configFile;
 
   uintmax_t size;
-    // Care has to be taken for adding new volumes, because the lookup of a file id means each StorageVolume will have to be queried. Filebuckets are only aware of what file ids are assigned, not which volume they are stored in.
-    // Future optimization: we could add the file id to a hash table of the file id mapped to its volumeid, so that the lookup is much faster
-    // The hash table would expire file id entries that are older than a certain threshold, i.e. not accessed within a certain time period
+  //! A mapping of FileBucketIds to a list of volumes containing their contents
   std::unordered_map<FileBucketId, std::vector<VolumeId>, IdHasher> fbVolDb;
 };
 }

@@ -28,7 +28,7 @@
 ** DONE better hashing mechanism for files, non-int ids
 ** DONE remove META file necessity (buckets should have uuid)
 ** DONE storage node/master node distinction
-** TODO spawnCDN should load from configuration for storage nodes
+** TODO spawn should load from configuration for storage nodes
 ** TODO make FileBucketRegistry and VolumeRegistry use same base class
 ** converter changes
 *** convertInput -> deserialize

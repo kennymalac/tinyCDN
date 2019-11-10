@@ -34,6 +34,9 @@ struct MasterParams {
 class MasterFileHostingService;
 class MasterFileUploadingService;
 
+/*!
+ * \brief Communicates with Clients and facilitates host and upload transactions on the storage clusters.
+ */
 class MasterNode {
 public:
   UUID4 id;
@@ -43,6 +46,7 @@ public:
   //! If this MasterNode was opened from a pre-existing REGISTRY file that was created before running the current program instance
   bool existing;
 
+  //! Tests if the FileBucket in question can store a file of a specific size and various types
   bool inspectFileBucket(std::unique_ptr<FileBucket>& fb, Size minimumSize, std::vector<std::string> types);
   std::unique_ptr<MasterFileHostingService> getHostingService();
   std::unique_ptr<MasterFileUploadingService> getUploadingService();
@@ -103,8 +107,10 @@ public:
   // parseMasterStorageClusterRequest(std::string message); -> MasterRequest
   // parseMasterClientRequest(std::string message); -> MasterRequest
 
+  //! Receives a request coming from the event loop and acts on the request
   MasterResponse receiveRequest(MaybeMasterRequest request);
-  // Consider using std::future<StorageClusterResponse>
+  // TODO Consider using std::future<StorageClusterResponse>
+  //! Sends a request to a StorageCluster
   void sendStorageClusterRequest(UUID4 id, StorageClusterRequest request);
 
 private:
