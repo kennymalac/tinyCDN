@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.3)
 project(TinyCDN)
-set(PROJECT_VERSION 0.0.1)
+set(PROJECT_VERSION 0.1.0)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
@@ -86,15 +86,18 @@ target_link_libraries(TinyCDN_Base stdc++fs)
 target_link_libraries(Run TinyCDN_Base stdc++fs)
 
 # TODO make testing an option, see https://github.com/ComicSansMS/GhulbusBase/blob/master/CMakeLists.txt
-enable_testing()
-add_library(Catch INTERFACE)
+option(BUILD_TESTS "Compile tests" OFF)
+if(BUILD_TESTS)
+  enable_testing()
+  add_library(Catch INTERFACE)
 
-target_include_directories(Catch INTERFACE ${BASE_TEST_DIR}/include)
+  target_include_directories(Catch INTERFACE ${BASE_TEST_DIR}/include)
 
-# Create the testing suite executable
-add_executable(Test ${TEST_SOURCES})
-target_link_libraries(Test TinyCDN_Base Catch stdc++fs)
-add_test(NAME TestBase COMMAND Test)
+  # Create the testing suite executable
+  add_executable(Test ${TEST_SOURCES})
+  target_link_libraries(Test TinyCDN_Base Catch stdc++fs)
+  add_test(NAME TestBase COMMAND Test)
+endif()
 
 option(BUILD_CFFI "Generate the shared library" OFF)
 if(BUILD_CFFI)
@@ -106,9 +109,9 @@ if(BUILD_CFFI)
   target_link_libraries(tinyCDN TinyCDN_Base)
 endif()
 
-option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" OFF)
+option(BUILD_DOCUMENTATION "Use Doxygen to create the HTML based API documentation" ON)
 if(BUILD_DOCUMENTATION)
-    set(DOXYGEN_EXCLUDE_PATTERNS catch.hpp */include/pistache/*)
+    set(DOXYGEN_EXCLUDE_PATTERNS catch.hpp */include/pistache/* */include/asio-1.12.2/*)
     set(DOXYGEN_EXCLUDE_DIR)
     set(DOXYGEN_OUTPUT_DIRECTORY "./docs")
 

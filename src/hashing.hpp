@@ -11,6 +11,7 @@
 
 namespace TinyCDN::Utility::Hashing {
 
+//! Converts hex strings into binary strings
 template <typename T>
 const char* hexCharToBinary(T c) {
   switch(toupper(c)) {
@@ -34,6 +35,7 @@ const char* hexCharToBinary(T c) {
   }
 }
 
+//! Generator that creates pseudo-random hex C-strings
 class PseudoRandomHexFactory {
 public:
   PseudoRandomHexFactory() {
@@ -59,7 +61,7 @@ private:
   static constexpr char hex[17]{"0123456789ABCDEF"};
 };
 
-//! Wrapper type for fixed-size bitset with hex conversion to/from a string
+//! Wrapper type for a fixed-size bitset with hex conversion to/from a string
 template <int fixedSize>
 class Id {
 public:
@@ -153,6 +155,7 @@ public:
   }
 };
 
+//! Implementation of UUID4 as defined by IEEE
 class UUID4 : public Id<128> {
 public:
   UUID4& operator=(std::string val) {
@@ -198,6 +201,7 @@ public:
   }
 };
 
+//! Generates pseudo-random UUID4 instances
 class UUID4Factory {
 public:
   UUID4Factory() {}
@@ -219,6 +223,7 @@ private:
   PseudoRandomHexFactory generator;
 };
 
+//! Generates pseudo-random Id instances
 class IdFactory {
 public:
   IdFactory() {}

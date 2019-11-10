@@ -13,6 +13,7 @@ using TinyCDN::Utility::Size;
 namespace TinyCDN::Middleware::FileStorage {
 
 using fileId = uint_fast32_t;
+//! Wrapper around a file that can be opened in either a Read-only or Read-Write mode
 struct StoredFile
 {
   Size size;

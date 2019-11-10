@@ -9,6 +9,7 @@
 namespace TinyCDN::Utility {
 
 extern "C" {
+  //! Wrapper around an input stream that iterates over a buffer of size bufferSize.
   struct ChunkedCursor {
     std::size_t bufferSize;
     std::uintmax_t size;

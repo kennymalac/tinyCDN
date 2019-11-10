@@ -14,7 +14,7 @@ namespace TinyCDN::Middleware::FileStorage {
 namespace File = TinyCDN::Middleware::File;
 
 using fileId = uint_fast32_t;
-// Storage backends should implement this abstract class
+//! A common interface between Volume instances and an underlying storage backend.
 class FileStorage {
 protected:
   std::atomic<fileId> fileUniqueId;
@@ -39,8 +39,11 @@ public:
   //! Completely removes this storage and all of its contained files
   virtual void destroy() = 0;
 
+  //! Finds a StoredFile by fileId
   virtual std::unique_ptr<StoredFile> lookup(fileId id) = 0;
+  //! Adds a StoredFile into storage
   virtual std::unique_ptr<StoredFile> add(std::unique_ptr<StoredFile> file) = 0;
+  //! Removes a StoredFile from storage
   virtual void remove(std::unique_ptr<StoredFile> file) = 0;
 
   FileStorage(Size size, fs::path location, bool preallocated);

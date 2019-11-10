@@ -40,7 +40,8 @@ public:
   inline Volume(VolumeId id, Size size) : id(id), size(size) {};
 };
 
-/*! Volume capable of storing files.
+/*!
+ * \brief Volume capable of storing files.
  * FileBuckets are assigned volumes based on location, config, etc.
  A StorageVolume will be assigned many different buckets from a VirtualVolume, but if a bucket does not populate, it can "spill over" into another StorageVolume if necessary.
  At some point, every now and then the volume can reallocate space by reclaiming lost volume space. (?)
@@ -80,7 +81,7 @@ using MaybeAnyStorageVolume = std::variant<std::monostate, std::unique_ptr<Stora
 struct VirtualVolume;
 
 /*!
- * \brief Responsible for allocating, replicating, and removing volumes as necessary.
+ * \brief Responsible for allocating, replicating, and removing StorageVolume instances as necessary.
  */
 class StorageVolumeManager {
 public:

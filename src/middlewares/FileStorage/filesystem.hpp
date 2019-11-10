@@ -7,6 +7,7 @@
 
 namespace TinyCDN::Middleware::FileStorage {
 
+//! Implementation of the FileStorage abstract class utilizing std::filesystem
 class FilesystemStorage : public FileStorage {
 private:
   std::ofstream META;
