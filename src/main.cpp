@@ -1,7 +1,10 @@
 #include <string>
 #include <iostream>
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
 
 #include "middlewares/Master/master.hpp"
+#include "middlewares/Master/services.hpp"
 //#include "utility.hpp"
 //#include "middlewares/file.hpp"
 
@@ -9,8 +12,6 @@
 #include "middlewares/Volume/marshaller.hpp"
 #include "middlewares/Volume/volume.hpp"
 #include "middlewares/Volume/services.hpp"
-#include "middlewares/StorageCluster/request.hpp"
-#include "middlewares/StorageCluster/response.hpp"
 #include "middlewares/StorageCluster/services.hpp"
 #include "middlewares/StorageCluster/storagecluster.hpp"
 
@@ -43,8 +44,8 @@ int main() {
     std::string CDNDomain;
     std::cin >> CDNDomain;
 
-    Middleware::Master::MasterNode master(false);
-    master.spawnCDN();
+    Middleware::Master::MasterNode master(fs::current_path(), false);
+    // master.spawn();
 
     std::cout << "Master spawned. No slaves have been created.";
   }

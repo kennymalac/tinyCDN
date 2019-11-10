@@ -46,11 +46,17 @@ set(SOURCES
   src/middlewares/Volume/volume.hpp
   src/middlewares/Volume/volume.cpp
   src/middlewares/Volume/services.hpp
-  src/middlewares/StorageCluster/request.hpp
-  src/middlewares/StorageCluster/response.hpp
+  src/middlewares/StorageCluster/requestTypes.hpp
+  src/middlewares/StorageCluster/requestParser.hpp
+  src/middlewares/StorageCluster/responseTypes.hpp
+  src/middlewares/StorageCluster/responseParser.hpp
   src/middlewares/StorageCluster/services.hpp
   src/middlewares/StorageCluster/storagecluster.hpp
   src/middlewares/StorageCluster/storagecluster.cpp
+  src/middlewares/Master/requestTypes.hpp
+  src/middlewares/Master/requestParser.hpp
+  src/middlewares/Master/responseTypes.hpp
+  src/middlewares/Master/responseParser.hpp
   src/middlewares/Master/master.hpp
   src/middlewares/Master/master.cpp
   # src/middlewares/Client/services.hpp

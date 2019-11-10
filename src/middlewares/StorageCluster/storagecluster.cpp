@@ -1,5 +1,5 @@
 #include "storagecluster.hpp"
-#include "request.hpp"
+
 #include "../Master/master.hpp"
 
 namespace TinyCDN::Middleware::StorageCluster {
@@ -79,20 +79,18 @@ void StorageClusterSession::spawn(StorageClusterParams config) {
 
   // TODO: Networking - initialize TCP server
 
-  // TODO: Networking - Wait forever for initialization packet from Master
-  // wait ()
+  // TODO: Networking - send initial packet to Master
 
-  // TODO: Networking - send acknowledgement packet to Master
+  // TODO: Networking - Wait forever for initialization acknowledgment response packet from Master
+  // wait ()
 
   // TODO: Networking - initialize server
 
   // TODO: Networking - send Master success or failure, ready to parse
+  // TODO: Networking - Wait forever for Master response to Success/Failure packet
 
-  // TODO: Networking - receive final Master acknowledgment packet
-
-  // Until this point is reached, no storage cluster request is allowed
+  // Until this point is reached, no storage cluster request is processed
+  // startEventLoop();
 }
-
-
 
 }

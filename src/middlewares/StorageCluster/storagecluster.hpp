@@ -9,20 +9,16 @@
 #include "../Volume/marshaller.hpp"
 #include "../../hashing.hpp"
 
+#include "../Master/requestTypes.hpp"
+#include "../Master/responseTypes.hpp"
+
+#include "requestTypes.hpp"
+#include "responseTypes.hpp"
 #include "marshaller.hpp"
-#include "request.hpp"
-#include "response.hpp"
 #include "services.hpp"
 
+
 namespace fs = std::experimental::filesystem;
-
-namespace TinyCDN::Middleware::Master {
-class MasterRequest;
-class MasterResponse;
-}
-
-class StorageClusterRequest;
-class StorageClusterResponse;
 
 namespace TinyCDN::Middleware::StorageCluster {
 

@@ -3,15 +3,6 @@
 namespace TinyCDN {
 using namespace Middleware::File;
 
-// MasterFileUploadingService* MasterFileUploadingServiceSingleton::getInstance() {
-//   static MasterFileUploadingService instance();
-//   return &instance;
-// }
-
-// MasterFileHostingService* FileHostingServiceSingleton::getInstance() {
-//   static FileHostingService instance();
-//   return &instance;
-// }
 
 auto MasterFileUploadingService::requestFileBucket(
   std::unique_ptr<FileBucketRegistry>& registry,
