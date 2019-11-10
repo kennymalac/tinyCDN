@@ -26,6 +26,9 @@ namespace TinyCDN::Middleware::File {
 
 using FileBucketId = Id<64>;
 using VolumeId = Id<64>;
+// TODO - what are chances of hash collision?
+using FileId = Id<48>;
+
 
 /*!
  * \brief The FileBucket represents a generic persistent data store for any file data and has a fixed size.

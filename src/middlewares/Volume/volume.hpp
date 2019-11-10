@@ -84,13 +84,19 @@ struct VirtualVolume;
  */
 class StorageVolumeManager {
 public:
-  uintmax_t getSize();
+  inline uintmax_t getSize() {
+    return size;
+  };
   //! Checks if size is going DOWN, if so, will replicate elsewhere?
-  void setSize(uintmax_t size);
+  inline void setSize(uintmax_t size) {
+    size = size;
+  };
 
-  AnyStorageVolume getStorageVolume(VolumeId id);
+  std::optional<std::tuple<std::unique_lock<std::shared_mutex>, MaybeAnyStorageVolume>> getStorageVolume(VolumeId id);
   template <typename T>
   std::unique_ptr<StorageVolume<T>> createStorageVolume(fs::path location);
+  template <typename T>
+  std::unique_ptr<StorageVolume<T>> loadStorageVolume(VolumeId id, Size size, fs::path location);
   // replicateVolume
   inline void removeStorageVolume(VolumeId id) {
     volumes.erase(id);
@@ -99,9 +105,11 @@ public:
 
   std::unordered_map<VolumeId, MaybeAnyStorageVolume, IdHasher> volumes;
 
-  inline StorageVolumeManager(uintmax_t size) : size(size) {}
+  inline StorageVolumeManager(uintmax_t size, uintmax_t defaultVolumeSize) : size(size), defaultVolumeSize(defaultVolumeSize) {}
 
 private:
+  IdFactory idFactory;
+  uintmax_t defaultVolumeSize;
   uintmax_t size;
 
   std::unordered_map<VolumeId, std::shared_mutex, IdHasher> volumeMutexes;
@@ -116,8 +124,14 @@ class VirtualVolume : public Volume {
 public:
   fs::path location;
   std::vector<VolumeId> getFileBucketVolumeIds(FileBucketId id);
+  inline uintmax_t getSize() {
+    return size;
+  };
   //! Also modifies storage volume manager's size
-  void setSize(uintmax_t size);
+  inline void setSize(uintmax_t size) {
+    storageVolumeManager.setSize(size);
+    size = size;
+  };
   StorageVolumeManager storageVolumeManager;
 
   //! Increments size by newly added volume size, adds to volDb
@@ -132,26 +146,11 @@ public:
   //! TODO: how to split the db file up?
   void loadDb(std::ifstream persistedDb);
 
-  //! NOTE: will not destroy backup volumes or replicated volumes(?)
-  inline void destroy() {
-    for (auto& kv : this->storageVolumeManager.volumes) {
-      // TODO move below to getStorageVolume
+  //! Destroys the virtual volume. NOTE: will not destroy backup volumes or replicated volumes(?)
+  void destroy();
 
-      // if (auto volume = std::get_if<StorageVolume<FileStorage::FilesystemStorage>>(r.second)) {
-p      //	volume->destroy();
-      // }
-      // else {
-      //	// This should never EVER happen! monostate is ruled out when mutex is acquired
-      // }
-
-      // // TODO improve complexity b/c removeStorageVolume will delete by key not by index
-      // this->storageVolumeManager.removeStorageVolume(kv.first);
-    }
-    this->setSize(0);
-  }
-
-  inline VirtualVolume(VolumeId id, uintmax_t size, fs::path location)
-    : Volume(id, size), location(location), storageVolumeManager(StorageVolumeManager{size})
+  inline VirtualVolume(VolumeId id, uintmax_t size, uintmax_t defaultVolumeSize, fs::path location)
+    : Volume(id, size), location(location), storageVolumeManager(StorageVolumeManager{size, defaultVolumeSize})
     {};
 
 private:

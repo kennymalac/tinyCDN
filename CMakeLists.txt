@@ -44,11 +44,13 @@ set(SOURCES
   src/middlewares/FileStorage/filesystem.cpp
   src/middlewares/Volume/marshaller.hpp
   src/middlewares/Volume/volume.hpp
+  src/middlewares/Volume/volume.cpp
   src/middlewares/Volume/services.hpp
   src/middlewares/StorageCluster/request.hpp
   src/middlewares/StorageCluster/response.hpp
   src/middlewares/StorageCluster/services.hpp
   src/middlewares/StorageCluster/storagecluster.hpp
+  src/middlewares/StorageCluster/storagecluster.cpp
   src/middlewares/Master/master.hpp
   src/middlewares/Master/master.cpp
   # src/middlewares/Client/services.hpp

@@ -16,15 +16,18 @@
 
 namespace fs = std::experimental::filesystem;
 
+namespace TinyCDN::Middleware::Master {
+class MasterRequest;
+class MasterResponse;
+}
+
+class StorageClusterRequest;
+class StorageClusterResponse;
+
 namespace TinyCDN::Middleware::StorageCluster {
 
 using namespace TinyCDN::Utility::Hashing;
 using namespace TinyCDN::Middleware::Volume;
-
-struct MasterRequest;
-struct MasterResponse;
-class StorageClusterRequest;
-class StorageClusterResponse;
 
 struct StorageClusterParams {
   UUID4 id;
@@ -46,7 +49,6 @@ public:
   //! If this StorageClusterNode was opened from a pre-existing config file that was created before running the current program instance
   bool existing;
 
-
   std::unique_ptr<VirtualVolume> virtualVolume;
 
   std::unique_ptr<StorageFileHostingService> getHostingService();
@@ -54,9 +56,10 @@ public:
 
   // std::map<SessionId, StorageFileHostingSession>
 
-  void configure(StorageClusterParams params);
+  // No thanks - RAII ?
+  // void configure(StorageClusterParams params);
 
-  StorageClusterNode() {};
+  StorageClusterNode(UUID4 id, std::string name, fs::path location);
 
 private:
   // TODO: object pool of services
@@ -69,7 +72,7 @@ private:
   std::unique_ptr<StorageFileHostingService> hostingService;
 
   // TODO pool of services... see above
-  std::mutex uploadServiceMutex;
+  std::mutex uploadingServiceMutex;
   std::mutex hostingServiceMutex;
   std::mutex virtualVolumeMutex;
 
@@ -93,36 +96,6 @@ public:
   StorageClusterParams loadConfig(fs::path location);
   void spawn();
 
-  void startSession(fs::path configFileLocation) {
-    if (started) {
-      throw std::logic_error("StorageClusterSession already started!");
-    }
-
-    // TODO: Networking - Wait forever for initialization packet from Master
-    // wait ()
-    std::ifstream configFile(this->configFileLocation);
-
-    if (!configFile.is_open() || configFile.bad()) {
-      // TODO Notify Master of failure to load
-
-      throw std::logic_error("Config file for StorageCluster could not be loaded!");
-    }
-
-    StorageClusterNodeJsonMarshaller marshaller;
-
-    std::string config((std::istreambuf_iterator<char>(configFile)),
-		       std::istreambuf_iterator<char>());
-    configFile.close();
-
-    // try {
-    //   // singleton.instance = marshaller.deserialize(config);
-    //   started = true;
-    // }
-    // catch (MarshallerException e) {
-    //   std::cerr << e.what();
-    // }
-  }
-
   //! Returns a raw pointer to the storageCluster node along with a lock that should be unlocked once the storageCluster node is no longer needed
   inline std::tuple<std::unique_lock<std::shared_mutex>, StorageClusterNode*> getStorageClusterNode() {
     // acquire storageCluster unique_lock
@@ -138,9 +111,11 @@ public:
   // parseStorageClusterMasterRequest(std::string message); -> StorageClusterRequest
   // parseStorageClusterClientRequest(std::string message); -> StorageClusterRequest
 
-  // TODO: Use Command pattern
+  // TODO: Use Command pattern, use variant for different types of commands rather than virtual class
   StorageClusterResponse receiveMasterCommand(StorageClusterRequest request);
-  void sendMasterCommand(MasterRequest request);
+  //! Sends a formatted TCP packet to the master node. TODO: Should this be a std::future<AcknowledgementResponse>. Should acknowledgement response have an ID? OR stateless? Probably stateless
+  void sendMasterCommand(Master::MasterRequest request);
+
   // NOTE: The client does not need TCP wrappers, client communication going from HTTP -> CFFI
   // StorageClusterResponse receiveClientCommand(StorageClusterRequest request);
   // StorageClusterResponse sendClientCommand(StorageClusterRequest request);

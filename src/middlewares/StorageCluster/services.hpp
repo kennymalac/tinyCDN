@@ -2,9 +2,10 @@
 
 namespace TinyCDN::Middleware::StorageCluster {
 
+struct StorageFileHostingService {
+};
+
 struct StorageFileUploadingService {
 };
 
-struct StorageFileHostingService {
-};
 }

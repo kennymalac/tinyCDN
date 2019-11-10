@@ -218,4 +218,27 @@ public:
 private:
   PseudoRandomHexFactory generator;
 };
+
+class IdFactory {
+public:
+  IdFactory() {}
+
+  template <int fixedSize>
+  Id<fixedSize> generate() {
+    auto* id = generator(fixedSize);
+
+    Id<fixedSize> output;
+    std::string s(id);
+    output = s;
+
+    // No memory leaks here!
+    delete id;
+
+    return output;
+  }
+
+private:
+  PseudoRandomHexFactory generator;
+};
+
 }
