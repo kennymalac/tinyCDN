@@ -48,11 +48,10 @@ void StorageClusterSession::sendMasterCommand(MasterRequest request) {
 
 StorageClusterParams StorageClusterSession::loadConfig(fs::path location) {
   // Take file
-  std::ifstream configFile(this->configFileLocation);
+  std::ifstream configFile(location);
 
   if (!configFile.is_open() || configFile.bad()) {
     // TODO Notify Master of failure to load
-
     throw std::logic_error("Config file for StorageCluster could not be loaded!");
   }
 
@@ -62,6 +61,8 @@ StorageClusterParams StorageClusterSession::loadConfig(fs::path location) {
 
   // Marshal config into StorageClusterParams
   StorageClusterNodeJsonMarshaller marshaller;
+
+  configFileLocation = location;
 
   // TODO returns params, or returns cluster node?
   return StorageClusterParams{};
@@ -78,6 +79,8 @@ void StorageClusterSession::spawn(StorageClusterParams config, bool existing) {
   // try {
   //   // singleton.instance = marshaller.getInstance(config);
   //   started = true;
+
+  singleton.initInstance(singleton, UUID4{std::string{""}}, "master-test", fs::current_path());
   // }
   // catch (MarshallerException e) {
   //   std::cerr << e.what();
@@ -97,6 +100,8 @@ void StorageClusterSession::spawn(StorageClusterParams config, bool existing) {
 
   // Until this point is reached, no storage cluster request is processed
   // startEventLoop();
+
+  started = true;
 }
 
 }

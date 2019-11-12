@@ -79,6 +79,7 @@ void MasterSession::spawn(MasterParams params, bool existing) {
   //   // singleton.instance = marshaller.getInstance(config);
   //   started = true;
   // }
+  singleton.initInstance(singleton, fs::current_path(), existing);
   // catch (MarshallerException e) {
   //   std::cerr << e.what();
   // }
@@ -89,6 +90,8 @@ void MasterSession::spawn(MasterParams params, bool existing) {
 
   // Until this point is reached, no request was parsed
   startEventLoop();
+
+  started = true;
 }
 
 void MasterSession::startEventLoop() {

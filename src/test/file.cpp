@@ -50,7 +50,8 @@ SCENARIO("A new CDN is created") {
     // WHEN("The storage cluster is spawned without a valid configuration") {
     // TODO when a storage cluster is created...
     WHEN("The storage cluster is spawned with a valid configuration") {
-      auto config = storageClusterSession.loadConfig(fs::path{"storage.json"});
+      std::cout << fs::current_path() / fs::path{"storage.json"} << std::endl;
+      auto config = storageClusterSession.loadConfig(fs::current_path() / fs::path{"storage.json"});
       storageClusterSession.spawn(config, false);
 
       auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
