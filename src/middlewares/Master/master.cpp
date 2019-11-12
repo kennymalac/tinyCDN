@@ -57,10 +57,10 @@ MasterNode::MasterNode(fs::path location, bool existing) : existing(existing) {
 }
 
 
-MasterNode* MasterNodeSingleton::initInstance(fs::path location, bool existing) {
+MasterNode* MasterNodeSingleton::initInstance(MasterNodeSingleton singleton, fs::path location, bool existing) {
   static MasterNode newInstance(location, existing);
-  instance = &newInstance;
-  return instance;
+  singleton.instance = &newInstance;
+  return singleton.instance;
 }
 
 MasterParams MasterSession::loadConfig(fs::path location) {
@@ -70,7 +70,7 @@ MasterParams MasterSession::loadConfig(fs::path location) {
   return MasterParams{};
 }
 
-void MasterSession::spawn(MasterParams params) {
+void MasterSession::spawn(MasterParams params, bool existing) {
   if (started) {
     throw std::logic_error("MasterSession already started!");
   }
@@ -112,7 +112,7 @@ MasterResponse MasterSession::receiveRequest(MaybeMasterRequest request) {
   //   std::visit([](auto&& request) {
   //     if constexpr(std::is_same_v<decltype(request), MasterStorageNodeAcknowledgmentRequest&>) {
   //       // Acknowledged.
-  //       auto [lock, node] = getMasterNode();
+  //       auto [lock, node] = getNode();
   // // Make sure that cluster node id exists, hostname matches, master key is correct
   // // Add StorageClusterNode to the active storage node list
   //	node->doSomething();

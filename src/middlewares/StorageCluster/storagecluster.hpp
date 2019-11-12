@@ -79,8 +79,8 @@ private:
 };
 
 struct StorageClusterNodeSingleton {
-  static StorageClusterNode* getInstance();
-  static StorageClusterNode instance;
+  StorageClusterNode* instance;
+  static StorageClusterNode* initInstance(StorageClusterNodeSingleton singleton, UUID4 id, std::string name, fs::path location);
 };
 
 class StorageClusterSession {
@@ -90,17 +90,18 @@ public:
   fs::path configFileLocation;
 
   StorageClusterParams loadConfig(fs::path location);
-  void spawn(StorageClusterParams config);
+  void spawn(StorageClusterParams config, bool existing);
 
   //! Returns a raw pointer to the storageCluster node along with a lock that should be unlocked once the storageCluster node is no longer needed
-  inline std::tuple<std::unique_lock<std::shared_mutex>, StorageClusterNode*> getStorageClusterNode() {
+  inline std::tuple<std::unique_lock<std::shared_mutex>, StorageClusterNode*> getNode() {
+    if (!started) {
+      throw new std::logic_error("StorageClusterNode is not initialized because the session has not started.");
+    }
     // acquire storageCluster unique_lock
     // timeout for mutex?
-
-    //    storageClusterSession.storageClusterNodeMutex;
     std::unique_lock<std::shared_mutex> lock(storageClusterNodeMutex);
 
-    return { std::move(lock), singleton.getInstance() };
+    return { std::move(lock), singleton.instance };
   }
 
   // HTTP frontend: implement the following

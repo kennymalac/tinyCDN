@@ -34,12 +34,11 @@ SCENARIO("A new CDN is created") {
 
   GIVEN("a new Master Session and StorageCluster") {
     MasterSession masterSession;
-    auto [masterLock, master] = masterSession.getMasterNode();
-    master->existing = false;
-
+    // TODO - test getNode returns logical error if session isn't started
+    // auto [masterLock, master] = masterSession.getNode();
     StorageClusterSession storageClusterSession;
-    auto [storageClusterLock, storageCluster] = storageClusterSession.getStorageClusterNode();
-    storageCluster->existing = false;
+    // TODO - test getNode returns logical error if session isn't started
+    // auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
 
 
     WHEN("the Master is spawned without a valid configuration") {
@@ -52,7 +51,9 @@ SCENARIO("A new CDN is created") {
     // TODO when a storage cluster is created...
     WHEN("The storage cluster is spawned with a valid configuration") {
       auto config = storageClusterSession.loadConfig(fs::path{"storage.json"});
-      storageClusterSession.spawn(config);
+      storageClusterSession.spawn(config, false);
+
+      auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
 
       // TODO test for TCP server on port 6498
       // TODO networking tests
@@ -65,30 +66,33 @@ SCENARIO("A new CDN is created") {
 	REQUIRE( fs::is_empty(fs::path{"VOLUMES"}) == false );
 	// TODO test Marshaller elsewhere
 
-        for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
+	for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
 	  // NOTE only visit is allowed here - unique_ptr is owned by variant.
-          std::visit([](auto&& volume) {
-            if constexpr(std::is_same_v<decltype(volume), StorageVolume<FileStorage::FilesystemStorage>&>) {
-              // Size is 1GB
-              REQUIRE( volume.size == Size{1_gB} );
+	  std::visit([](auto&& volume) {
+	    if constexpr(std::is_same_v<decltype(volume), StorageVolume<FileStorage::FilesystemStorage>&>) {
+	      // Size is 1GB
+	      REQUIRE( volume.size == Size{1_gB} );
 
-              // Allocated size thus far is 0
-              REQUIRE( volume->storage->getAllocatedSize() == Size{0_kB} );
+	      // Allocated size thus far is 0
+	      REQUIRE( volume->storage->getAllocatedSize() == Size{0_kB} );
 
-              // Storage is Filesystem storage driver
-              auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(volume.storage);
-              REQUIRE( typeid(storage) == typeid(StorageVolume<FileStorage::FilesystemStorage>) );
-              // TODO in volume test, check that limit in JSON config is respected
-            }
+	      // Storage is Filesystem storage driver
+	      auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(volume.storage);
+	      REQUIRE( typeid(storage) == typeid(StorageVolume<FileStorage::FilesystemStorage>) );
+	      // TODO in volume test, check that limit in JSON config is respected
+	    }
 	  }, kv.second);
-        }
+	}
       }
     }
 
     // WHEN("the master is spawned with an invalid storage cluster configuration") {
     WHEN("the master is spawned with a valid configuration") {
       auto config = masterSession.loadConfig(fs::path{"master.json"});
-      masterSession.spawn(config);
+      masterSession.spawn(config, false);
+      auto [masterLock, master] = masterSession.getNode();
+      // Also get the storage cluster
+      auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
 
       THEN("the Master configuration matches the file, it creates an empty REGISTRY file") {
 	REQUIRE(master->id == UUID4{std::string{"9498038e-3e97-45c3-8b92-19073fada165"}});
@@ -109,7 +113,7 @@ SCENARIO("A new CDN is created") {
 	// Factory function for adding FileBuckets
 	auto addBucket = [&fbRegistry]
 	  (auto t, auto t2, auto t3) {
-          return fbRegistry->create(t, t2, t3);
+	  return fbRegistry->create(t, t2, t3);
 	};
 
 	for (auto spec : fbArgs) {
@@ -174,43 +178,43 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
   GIVEN("a persisted MasterNode with persisted buckets and StorageClusterNode with persisted volumes") {
 
     MasterSession masterSession;
-    auto [masterLock, master] = masterSession.getMasterNode();
-    master->existing = true;
-
     StorageClusterSession storageClusterSession;
-    auto [storageClusterLock, storageCluster] = storageClusterSession.getStorageClusterNode();
-    storageCluster->existing = true;
 
     WHEN("the storage cluster is spawned with a valid configuration") {
       auto config = storageClusterSession.loadConfig(fs::path{"storage.json"});
-      storageClusterSession.spawn(config);
+      storageClusterSession.spawn(config, true);
+      auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
+
       THEN("The fileBucket volume DB is initialized within a Virtual Volume and the Storage Cluster node loads the volumes into memory") {
 	REQUIRE( storageCluster->virtualVolume->id == VolumeId{"a32b8963a2084ba7"} );
 	REQUIRE( storageCluster->virtualVolume->storageVolumeManager.volumes.size() == 4 );
 
-        for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
+	for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
 	  // NOTE only visit is allowed here - unique_ptr is owned by variant.
-          std::visit([](auto&& volume) {
-            if constexpr(std::is_same_v<decltype(volume), StorageVolume<FileStorage::FilesystemStorage>&>) {
-              // Size is 1GB
-              REQUIRE( volume.size == Size{1_gB} );
+	  std::visit([](auto&& volume) {
+	    if constexpr(std::is_same_v<decltype(volume), StorageVolume<FileStorage::FilesystemStorage>&>) {
+	      // Size is 1GB
+	      REQUIRE( volume.size == Size{1_gB} );
 
-              // Allocated size thus far is 0
-              REQUIRE( volume->storage->getAllocatedSize() == Size{0_kB} );
+	      // Allocated size thus far is 0
+	      REQUIRE( volume->storage->getAllocatedSize() == Size{0_kB} );
 
-              // Storage is Filesystem storage driver
-              auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(volume.storage);
-              REQUIRE( typeid(storage) == typeid(StorageVolume<FileStorage::FilesystemStorage>) );
-              // TODO in volume test, check that limit in JSON config is respected
-            }
+	      // Storage is Filesystem storage driver
+	      auto storage = std::get<StorageVolume<FileStorage::FilesystemStorage>>(volume.storage);
+	      REQUIRE( typeid(storage) == typeid(StorageVolume<FileStorage::FilesystemStorage>) );
+	      // TODO in volume test, check that limit in JSON config is respected
+	    }
 	  }, kv.second);
-        }
+	}
       }
     }
 
     WHEN("the master is spawned") {
       auto config = masterSession.loadConfig(fs::path{"master.json"});
-      masterSession.spawn(config);
+      masterSession.spawn(config, true);
+      auto [masterLock, master] = masterSession.getNode();
+      auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
+
       THEN("The registry is initialized and it loads its FileBuckets into memory") {
 	REQUIRE(master->id == UUID4{std::string{"9498038e-3e97-45c3-8b92-19073fada165"}});
 
@@ -222,8 +226,8 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 
 	// Get all volume ids that are in virtual volume
 	std::vector<VolumeId> allVolumeIds;
-        for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
-          allVolumeIds.push_back(kv.first);
+	for (auto &kv : storageCluster->virtualVolume->storageVolumeManager.volumes) {
+	  allVolumeIds.push_back(kv.first);
 	}
 
 	std::vector<std::unique_ptr<Size>> fbSizes;
@@ -236,8 +240,8 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 	  auto const& registryItem = fbRegistry->registry[i];
 	  std::cout << "registryItem: " << registryItem->contents << "\n";
 
-          auto& fbMutex = fbRegistry->bucketMutexes[i];
-          auto& bucket = registryItem->getBucket<std::shared_lock<std::shared_mutex>>(fbMutex);
+	  auto& fbMutex = fbRegistry->bucketMutexes[i];
+	  auto& bucket = registryItem->getBucket<std::shared_lock<std::shared_mutex>>(fbMutex);
 
 	  // Ownership of the FileBucket was transferred to this scope
 	  REQUIRE( registryItem->fileBucket.has_value() == false );
@@ -267,13 +271,12 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
 	  REQUIRE( std::any_of(allVolumeIds.cbegin(), allVolumeIds.cend(), [&fbVolumeId](auto vId){ return fbVolumeId == vId; }) );
 	}
       }
+      masterLock.unlock();
+      storageClusterLock.unlock();
     }
 
     // Tear down
     fs::remove("VOLUMES");
     fs::remove("REGISTRY");
-
-    masterLock.unlock();
-    storageClusterLock.unlock();
   }
 };

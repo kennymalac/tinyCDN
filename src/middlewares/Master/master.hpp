@@ -74,7 +74,7 @@ private:
 
 struct MasterNodeSingleton {
   MasterNode* instance;
-  MasterNode* initInstance(fs::path location, bool existing = false);
+  static MasterNode* initInstance(MasterNodeSingleton singleton, fs::path location, bool existing = false);
 };
 
 /*!
@@ -88,16 +88,17 @@ public:
   //! Parses a JSON file location into a configuration that can be spawned
   MasterParams loadConfig(fs::path location);
   //! Runs the TCP server, Initializes the FileBucketRegistry, connects to Storage cluster (TODO), and runs the event loop
-  void spawn(MasterParams params);
+  void spawn(MasterParams params, bool existing);
   //! Starts the event loop that waits for Requests. Run this in a different thread.
   void startEventLoop();
 
   //! Returns a raw pointer to the master node along with a lock that should be unlocked once the master node is no longer needed
-  inline std::tuple<std::unique_lock<std::shared_mutex>, MasterNode*> getMasterNode() {
+  inline std::tuple<std::unique_lock<std::shared_mutex>, MasterNode*> getNode() {
+    if (!started) {
+      throw new std::logic_error("MasterNode is not initialized because the session has not started.");
+    }
     // acquire master unique_lock
     // timeout for mutex?
-
-    //    masterSession.masterNodeMutex;
     std::unique_lock<std::shared_mutex> lock(masterNodeMutex);
 
     return { std::move(lock), singleton.instance };
