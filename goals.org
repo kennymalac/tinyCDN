@@ -22,7 +22,7 @@
 *** 
 
 * General
-** TODO Make storage class use hashing Id rather than atomic int for file ids
+** DONE Make storage class use hashing Id rather than atomic int for file ids
 ** DONE make Id class use bitset internally
 ** TODO Make client use its own namespace
 ** DONE better hashing mechanism for files, non-int ids

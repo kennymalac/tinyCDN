@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include "FileStorage/storedfile.hpp"
+#include "../hashing.hpp"
 
 namespace TinyCDN::Utility::Exceptions {
 class NotImplementedException : public std::logic_error
@@ -20,6 +21,8 @@ public:
 
 // TODO migrate namespace
 namespace TinyCDN::Middleware::File {
+using namespace TinyCDN::Utility::Hashing;
+
 struct FileBucket;
 struct FileBucketRegistry;
 struct FileBucketRegistryItem;
@@ -31,7 +34,7 @@ inline void logStoredFile(const std::optional<Storage::StoredFile>& maybeStoredF
     return;
   }
   auto const file = maybeStoredFile.value();
-  errorLog << "id: " << file.id.value_or(0) << "\n";
+  errorLog << "id: " << file.id.value_or(Id<64>{std::string{""}}) << "\n";
   errorLog << "location: " << file.location << "\n";
   errorLog << "temporary: " << file.temporary << "\n";
   errorLog << "size: " << file.size << "\n";

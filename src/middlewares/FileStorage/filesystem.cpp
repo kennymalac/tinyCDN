@@ -7,42 +7,37 @@ namespace TinyCDN::Middleware::FileStorage {
 const fs::path FilesystemStorage::linkDirName = fs::path{"links/"};
 const int FilesystemStorage::storeFileThreshold = 1000;
 
-fileId FilesystemStorage::getUniqueFileId()
-{
-  auto const id = ++fileUniqueId;
-
-  // Persist incremented id to META
-  persist();
-  return id;
+FileId FilesystemStorage::getUniqueFileId() {
+  return idFactory.generate<64>();
 }
 
-fileId FilesystemStorage::getUniqueStoreId()
+StoreId FilesystemStorage::getUniqueStoreId()
 {
-  std::cout << "getUniqueStoreId " << storeUniqueId << std::endl;
-  auto const id = ++storeUniqueId;
+  auto id = idFactory.generate<32>();
+
+  std::cout << "getUniqueStoreId " << id << std::endl;
 
   // Create the store's directory
-  fs::create_directory(this->location / "store" / std::to_string(id));
+  fs::create_directory(this->location / "store" / id.str());
 
   // Persist incremented id to META
-  persist();
+  // persist();
   return id;
 }
 
 void FilesystemStorage::persist() {
   META.seekp(0);
-  META << storeUniqueId << ";" << fileUniqueId << ';' << getAllocatedSize();
+  META << currentStoreId;
+  META << ";";
+  META << getAllocatedSize();
   META.flush();
 }
 
 void FilesystemStorage::allocate()
 {
-  fileUniqueId = 0;
-  storeUniqueId = 1;
-
   fs::create_directory(this->location / "links");
   fs::create_directory(this->location / "store");
-  fs::create_directory(this->location / "store" / std::to_string(1));
+  currentStoreId = getUniqueStoreId();
 
   persist();
 }
@@ -53,14 +48,14 @@ void FilesystemStorage::destroy()
 }
 
 // cdn-website.com/<bucket_id>/<file_id>/file.jpg
-std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
+std::unique_ptr<StoredFile> FilesystemStorage::lookup(FileId id)
 {
   // auto search = fileMutexes.find(id);
   auto lock = std::make_unique<std::shared_lock<std::shared_mutex>>(fileMutexes[id]);
 
   try {
     auto stFile = std::make_unique<StoredFile>(
-      fs::read_symlink(this->location / this->linkDirName / std::to_string(id)), false, std::move(lock));
+      fs::read_symlink(this->location / this->linkDirName / id.str()), false, std::move(lock));
 
     stFile->id = id;
     return stFile;
@@ -73,31 +68,38 @@ std::unique_ptr<StoredFile> FilesystemStorage::lookup(fileId id)
 std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> file)
 {
   std::unique_lock<std::mutex> storageLock(mutex);
+  // Increment the allocatedSize
   allocatedSize = std::make_unique<Size>(getAllocatedSize() + file->size);
+  storageLock.unlock();
 
   auto const assignedId = getUniqueFileId();
-
   file->id = assignedId;
 
-  auto assignedStoreId = storeUniqueId.load();
+  // TODO Have a list of the store ids that are the most empty and populate those
+  auto assignedStoreId = currentStoreId;
 
-  std::unique_lock<std::shared_mutex> storeLock(storeMutexes[assignedStoreId]);
+  // TODO - do we need to EVER lock the store? perhaps for incrementing file count?
+  // std::unique_lock<std::shared_mutex> storeLock(storeMutexes[assignedStoreId]);
 
-  auto assignedLocation = this->location / "store" / fs::path(std::to_string(assignedStoreId)) / file->location.filename();
+  auto stem = file->location.stem();
+  auto ext = file->location.extension();
+  std::string assignedFileName{""};
+  // TODO: Truncate stem?
+  assignedFileName.append(stem);
+  assignedFileName.append("_");
+  assignedFileName.append(file->id->str());
+  assignedFileName.append(ext);
+
+  auto assignedLocation = this->location / "store" / fs::path(assignedStoreId.str()) / fs::path(assignedFileName);
 
   std::ios::sync_with_stdio();
   std::cout << "FileSystemStorage::add assignedLocation: " << assignedLocation << std::endl;
-  // TODO increment store's amount of files stored
-  if (fs::exists(assignedLocation)) {
-    // The likelihood that a file in a separate would have the same filename is very low, so just create a new store folder for now
-    // TODO reuse existing stores, don't always create new ones in this situation
-    assignedStoreId = getUniqueStoreId();
 
-    assignedLocation = this->location / "store" / fs::path(std::to_string(assignedStoreId)) / file->location.filename();
-  }
+  // TODO increment store's amount of files stored
+  // Chance of hash collision is miniscule
+  // if (fs::exists(assignedLocation)) {
 
   // No mutations on the storage instance's properties will be made following this
-  storageLock.unlock();
 
   {
     std::ofstream stream(assignedLocation);
@@ -105,21 +107,17 @@ std::unique_ptr<StoredFile> FilesystemStorage::add(std::unique_ptr<StoredFile> f
       storageLock.lock();
       allocatedSize = std::make_unique<Size>(getAllocatedSize() - file->size);
       storageLock.unlock();
-      storeLock.unlock();
-      throw File::FileStorageException(0, "Temporary file could not be created for StoredFile in specified location", *file);
+      throw File::FileStorageException(0, "New file could not be created for StoredFile in specified location", *file);
     }
   }
-  // Uniqueness of filename in this directory is now guaranteed, so unlock this
-  storeLock.unlock();
-
   // std::cout << "location: " << file->location << "\n";
   // std::cout << "assignedLocation: " << assignedLocation << "\n";
 
   fs::copy(file->location, assignedLocation, fs::copy_options::overwrite_existing);
   fs::remove(file->location);
 
-  // Create a link that points to this file
-  fs::create_symlink(assignedLocation, this->location / this->linkDirName / std::to_string(assignedId));
+  // Create a symlink that points to this file
+  fs::create_symlink(assignedLocation, this->location / this->linkDirName / assignedId.str());
 
   file->location = assignedLocation;
   file->temporary = false;
@@ -135,7 +133,7 @@ void FilesystemStorage::remove(std::unique_ptr<StoredFile> file)
 
   std::unique_lock<std::mutex> storageLock(mutex);
 
-  fs::remove(this->location / this->linkDirName / std::to_string(file->id.value()));
+  fs::remove(this->location / this->linkDirName / file->id.value().str());
 
   allocatedSize = file->size != 0
     ? std::make_unique<Size>(getAllocatedSize() - file->size)
@@ -155,9 +153,9 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
   std::ios::sync_with_stdio();
 
   std::cout << "Creating new FilesystemStorage...\n"
-            << "size: " << size
-            << " location: " << location
-            << " preallocated: " << preallocated << std::endl;
+	    << "size: " << size
+	    << " location: " << location
+	    << " preallocated: " << preallocated << std::endl;
 
   if (!preallocated) {
     META = std::ofstream(this->location / "META");
@@ -175,23 +173,23 @@ FilesystemStorage::FilesystemStorage(Size size, fs::path location, bool prealloc
       throw File::FileStorageException(2, "META file does not exist or is not available");
     }
 
-    std::string idsAndSize((std::istreambuf_iterator<char>(_meta)),
-                           std::istreambuf_iterator<char>());
+    std::string metaContents((std::istreambuf_iterator<char>(_meta)),
+			   std::istreambuf_iterator<char>());
     _meta.close();
-    std::cout << "idsAndSize " << idsAndSize << std::endl;
+    std::cout << "FileSystemStorage META contents: " << metaContents << std::endl;
 
     try {
-      auto delim = idsAndSize.find(";");
-      storeUniqueId = std::stoul(idsAndSize.substr(0, delim));
-      std::cout << "storeUniqueId: " << storeUniqueId << std::endl;
-      auto nextDelim = idsAndSize.find(";", delim+1);
+      auto delim = metaContents.find(";");
+      currentStoreId = metaContents.substr(0, delim);
+      std::cout << "currentStoreId: " << currentStoreId << std::endl;
+      // auto nextDelim = idsAndSize.find(";", delim+1);
 
-      fileUniqueId = std::stoul(idsAndSize.substr(delim+1, nextDelim));
-      std::cout << "fileUniqueId: " << fileUniqueId << std::endl;
-      delim = nextDelim;
+      // fileUniqueId = std::stoul(idsAndSize.substr(delim+1, nextDelim));
+      // std::cout << "fileUniqueId: " << fileUniqueId << std::endl;
+      // delim = nextDelim;
 
       char* nptr;
-      auto justSize = idsAndSize.substr(delim+1);
+      auto justSize = metaContents.substr(delim+1); // delim+1
 
       allocatedSize = std::make_unique<Size>(std::strtoumax(justSize.c_str(), &nptr, 10));
     }

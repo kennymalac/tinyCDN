@@ -8,20 +8,16 @@
 #include "storedfile.hpp"
 #include "../exceptions.hpp"
 
-using TinyCDN::Utility::Size;
 namespace TinyCDN::Middleware::FileStorage {
+using TinyCDN::Utility::Size;
 
 namespace File = TinyCDN::Middleware::File;
 
-using fileId = uint_fast32_t;
 //! A common interface between Volume instances and an underlying storage backend.
 class FileStorage {
 protected:
-  std::atomic<fileId> fileUniqueId;
   //! How much has been allocated already
   std::unique_ptr<Size> allocatedSize;
-  //! Persistence of the fileUniqueId is implementation-specific
-  virtual fileId getUniqueFileId() = 0;
 
 public:
   //! The maximum allowed size
@@ -33,14 +29,17 @@ public:
     return Size{*allocatedSize.get()};
   }
 
+  //! Persistence of the fileUniqueId is implementation-specific
+  virtual FileId getUniqueFileId() = 0;
+
   //! Storage backends override this method to allocate storage on the disk
   //! in whatever data format the storage backend uses.
   virtual void allocate() = 0;
   //! Completely removes this storage and all of its contained files
   virtual void destroy() = 0;
 
-  //! Finds a StoredFile by fileId
-  virtual std::unique_ptr<StoredFile> lookup(fileId id) = 0;
+  //! Finds a StoredFile by FileId
+  virtual std::unique_ptr<StoredFile> lookup(FileId id) = 0;
   //! Adds a StoredFile into storage
   virtual std::unique_ptr<StoredFile> add(std::unique_ptr<StoredFile> file) = 0;
   //! Removes a StoredFile from storage

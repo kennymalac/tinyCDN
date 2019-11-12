@@ -7,9 +7,12 @@
 
 namespace TinyCDN::Middleware::FileStorage {
 
+using StoreId = Id<32>;
+
 //! Implementation of the FileStorage abstract class utilizing std::filesystem
 class FilesystemStorage : public FileStorage {
 private:
+  StoreId currentStoreId;
   std::ofstream META;
   static const fs::path linkDirName;
   //! Saves META properties
@@ -17,17 +20,18 @@ private:
 
   mutable std::mutex mutex;
 
-  std::atomic<fileId> storeUniqueId;
   //std::map<fileId, std::unique_ptr<std::mutex>> storeMutexes;
-  std::map<fileId, std::shared_mutex> storeMutexes;
+  std::unordered_map<StoreId, std::shared_mutex, IdHasher> storeMutexes;
   //! Once the store reaches this amount of files, another folder will get created
   static const int storeFileThreshold;
 
   //std::map<fileId, std::unique_ptr<std::shared_mutex>> fileMutexes;
-  std::map<fileId, std::shared_mutex> fileMutexes;
+  std::unordered_map<FileId, std::shared_mutex, IdHasher> fileMutexes;
 
-  fileId getUniqueStoreId();
-  fileId getUniqueFileId();
+  StoreId getUniqueStoreId();
+  FileId getUniqueFileId();
+
+  IdFactory idFactory;
 
 public:
 
@@ -36,7 +40,7 @@ public:
   //! Deletes the storage directory
   void destroy();
 
-  std::unique_ptr<StoredFile> lookup(fileId id);
+  std::unique_ptr<StoredFile> lookup(FileId id);
   std::unique_ptr<StoredFile> add(std::unique_ptr<StoredFile> file);
   void remove(std::unique_ptr<StoredFile> file);
 

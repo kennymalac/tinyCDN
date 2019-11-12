@@ -27,7 +27,7 @@ namespace TinyCDN::Middleware::File {
 using FileBucketId = Id<64>;
 using VolumeId = Id<64>;
 // TODO - what are chances of hash collision?
-using FileId = Id<48>;
+using FileId = Id<64>;
 
 
 /*!

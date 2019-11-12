@@ -8,11 +8,13 @@
 namespace fs = std::experimental::filesystem;
 
 #include "../../utility.hpp"
+#include "../../hashing.hpp"
 
-using TinyCDN::Utility::Size;
 namespace TinyCDN::Middleware::FileStorage {
+using TinyCDN::Utility::Size;
+using namespace TinyCDN::Utility::Hashing;
 
-using fileId = uint_fast32_t;
+using FileId = Id<64>;
 //! Wrapper around a file that can be opened in either a Read-only or Read-Write mode
 struct StoredFile
 {
@@ -23,7 +25,7 @@ struct StoredFile
   //! StoredFile can be opened in a Read-only or Read-Write mode
   std::variant<std::unique_ptr<std::unique_lock<std::shared_mutex>>, std::unique_ptr<std::shared_lock<std::shared_mutex>>> lock;
 
-  std::optional<fileId> id;
+  std::optional<FileId> id;
   // std::optional<std::pair<std::size_t, std::size_t>> position;
   Size getRealSize();
 
