@@ -53,15 +53,15 @@ extern "C" {
 
 typedef const uintmax_t Size;
 
-constexpr std::size_t operator""_kB(unsigned long long v) {
+constexpr uintmax_t operator""_kB(unsigned long long v) {
   return 1024u * v;
 }
 
-constexpr std::size_t operator""_mB(unsigned long long v) {
+constexpr uintmax_t operator""_mB(unsigned long long v) {
   return 1048576u * v;
 }
 
-constexpr std::size_t operator""_gB(unsigned long long v) {
+constexpr uintmax_t operator""_gB(unsigned long long v) {
   return 1073741824 * v;
 }
 
