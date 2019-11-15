@@ -51,8 +51,11 @@ set(SOURCES
   src/middlewares/StorageCluster/responseTypes.hpp
   src/middlewares/StorageCluster/responseParser.hpp
   src/middlewares/StorageCluster/services.hpp
+  src/middlewares/StorageCluster/marshaller.hpp
   src/middlewares/StorageCluster/storagecluster.hpp
   src/middlewares/StorageCluster/storagecluster.cpp
+  src/middlewares/StorageCluster/session.hpp
+  src/middlewares/StorageCluster/session.cpp
   src/middlewares/Master/requestTypes.hpp
   src/middlewares/Master/requestParser.hpp
   src/middlewares/Master/responseTypes.hpp
@@ -86,7 +89,7 @@ target_link_libraries(TinyCDN_Base stdc++fs)
 target_link_libraries(Run TinyCDN_Base stdc++fs)
 
 # TODO make testing an option, see https://github.com/ComicSansMS/GhulbusBase/blob/master/CMakeLists.txt
-option(BUILD_TESTS "Compile tests" OFF)
+option(BUILD_TESTS "Compile tests" ON)
 if(BUILD_TESTS)
   enable_testing()
   add_library(Catch INTERFACE)

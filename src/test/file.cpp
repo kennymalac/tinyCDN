@@ -8,6 +8,7 @@
 #include "src/middlewares/file.hpp"
 #include "src/middlewares/Master/master.hpp"
 #include "src/middlewares/StorageCluster/storagecluster.hpp"
+#include "src/middlewares/StorageCluster/session.hpp"
 
 namespace file = TinyCDN::Middleware::File;
 namespace storage = TinyCDN::Middleware::FileStorage;

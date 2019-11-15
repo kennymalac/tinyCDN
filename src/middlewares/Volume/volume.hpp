@@ -132,6 +132,7 @@ public:
   };
   //! Also modifies storage volume manager's size
   inline void setSize(uintmax_t size) {
+    // Persist to config? IN which situation will this ever happen?
     storageVolumeManager.setSize(size);
     size = size;
   };
@@ -158,13 +159,11 @@ public:
   //! Destroys the virtual volume. NOTE: will not destroy backup volumes or replicated volumes(?)
   void destroy();
 
-  inline VirtualVolume(VolumeId id, uintmax_t size, uintmax_t defaultVolumeSize, fs::path location)
-    : Volume(id, size), location(location), storageVolumeManager(StorageVolumeManager{size, defaultVolumeSize})
-    {};
+  VirtualVolume(VolumeId id, uintmax_t size, uintmax_t defaultVolumeSize, fs::path location, fs::path fbVolDbLocation);
 
 private:
   std::ofstream fbVolDbFile;
-  std::ofstream configFile;
+  // std::ofstream configFile;
 
   uintmax_t size;
   //! A mapping of FileBucketIds to a list of volumes containing their contents

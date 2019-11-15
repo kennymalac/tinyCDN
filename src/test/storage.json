@@ -4,7 +4,7 @@
     "port": 6498,
     "virtual_volume": {
 	"id": "a32b8963a2084ba7",
-	"volumes": {
+	"volume_settings": {
 	    "size": "1GB",
 	    "limit": 4,
 	    "storage": {

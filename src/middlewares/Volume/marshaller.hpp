@@ -12,8 +12,20 @@ struct VolumeParams {
   VolumeId id;
   uintmax_t size;
 
-  VolumeParams() : size(0) {};
-  VolumeParams(VolumeId id, uintmax_t size) : id(id), size(size) {};
+  VolumeParams() : size(0) {}
+  VolumeParams(VolumeId id, uintmax_t size) : id(id), size(size) {}
+};
+
+struct VirtualVolumeParams : VolumeParams {
+  fs::path location;
+  //! Location of the FileBucket Volume DB file
+  fs::path fbVolDbLocation;
+  //! The default size of the created StorageVolumes
+  uintmax_t defaultVolumeSize;
+  //! The limit to the number of StorageVolumes to be created
+  int volumeLimit;
+
+  VirtualVolumeParams(VolumeId id, fs::path location, fs::path fbVolDbLocation, uintmax_t defaultVolumeSize, int volumeLimit) : VolumeParams(id, volumeLimit * defaultVolumeSize), fbVolDbLocation(fbVolDbLocation), volumeLimit(volumeLimit) {};
 };
 
 
@@ -45,7 +57,9 @@ struct VolumeCSVMarshaller {
 };
 
 // JSON because this may be read by other programs and will not grow very large
-struct VirtualVolumeJsonMarshaller {
-  // TODO decide what JSON library to use
+struct VirtualVolumeMarshaller {
+  inline std::unique_ptr<VirtualVolume> getInstance(VirtualVolumeParams params) {
+    return std::make_unique<VirtualVolume>(params.id, params.size, params.defaultVolumeSize, params.location, params.fbVolDbLocation);
+  }
 };
 }

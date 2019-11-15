@@ -1,3 +1,6 @@
+#include <iostream>
+#include <fstream>
+
 #include "volume.hpp"
 
 namespace TinyCDN::Middleware::Volume {
@@ -86,6 +89,16 @@ void VirtualVolume::addFileBucketVolume(FileBucketId fbId, VolumeId volId) {
 
 void VirtualVolume::loadDb(std::ifstream persistedDb) {
   // TODO load file - parse into fbVolDbMap. Look at FileBucketRegistry
+  if (!persistedDb.is_open() || persistedDb.bad()) {
+    throw File::FileStorageException(2, "fbVolDbFile file does not exist or is not available");
+  }
+
+  std::string line;
+  while (std::getline(persistedDb, line)) {
+    // TODO parse each mapping: convert the line into an entry in the db
+    std::cout << line;
+  }
+  std::cout.flush();
 }
 
 void VirtualVolume::destroy() {
@@ -104,5 +117,30 @@ void VirtualVolume::destroy() {
   }
   setSize(0);
 }
+
+VirtualVolume::VirtualVolume(VolumeId id, uintmax_t size, uintmax_t defaultVolumeSize, fs::path location, fs::path fbVolDbLocation)
+  : Volume(id, size), location(location), storageVolumeManager(StorageVolumeManager{size, defaultVolumeSize}) {
+  if (fs::exists(fbVolDbLocation)) {
+    {
+      std::ifstream _fbVolDbFile(fbVolDbLocation);
+      loadDb(std::move(_fbVolDbFile));
+    }
+
+    fbVolDbFile = std::ofstream(fbVolDbLocation, std::ios_base::out);
+  }
+  else {
+    // This is a completely new Virtual Volume
+    fbVolDbFile = std::ofstream(fbVolDbLocation, std::ios_base::out);
+
+    if (!fbVolDbFile.is_open() || fbVolDbFile.bad()) {
+      // TODO new exception?
+      throw File::FileStorageException(3, "fbVolDbFile file cannot be created");
+    }
+
+    // TODO do some extra setup stuff, like setup a default volume, etc.
+  }
+
+  storageVolumeManager = StorageVolumeManager{size, defaultVolumeSize};
+};
 
 }
