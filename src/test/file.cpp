@@ -30,6 +30,9 @@ auto static fbArgs = std::vector<fbInputArgs>{
   std::make_tuple(Size{2_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test")})
 };
 
+auto storageJsonPath = fs::path{"../src/test/storage.json"};
+auto masterJsonPath = fs::path{"../src/test/master.json"};
+
 SCENARIO("A new CDN is created") {
 
   GIVEN("a new Master Session and StorageCluster") {
@@ -50,8 +53,8 @@ SCENARIO("A new CDN is created") {
     // WHEN("The storage cluster is spawned without a valid configuration") {
     // TODO when a storage cluster is created...
     WHEN("The storage cluster is spawned with a valid configuration") {
-      std::cout << fs::current_path() / fs::path{"storage.json"} << std::endl;
-      auto config = storageClusterSession.loadConfig(fs::current_path() / fs::path{"storage.json"});
+      std::cout << fs::current_path() / storageJsonPath << std::endl;
+      auto config = storageClusterSession.loadConfig(fs::current_path() / storageJsonPath);
       storageClusterSession.spawn(config, false);
 
       auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
@@ -89,7 +92,7 @@ SCENARIO("A new CDN is created") {
 
     // WHEN("the master is spawned with an invalid storage cluster configuration") {
     WHEN("the master is spawned with a valid configuration") {
-      auto config = masterSession.loadConfig(fs::path{"master.json"});
+      auto config = masterSession.loadConfig(masterJsonPath);
       masterSession.spawn(config, false);
       auto [masterLock, master] = masterSession.getNode();
       // Also get the storage cluster
@@ -182,7 +185,7 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
     StorageClusterSession storageClusterSession;
 
     WHEN("the storage cluster is spawned with a valid configuration") {
-      auto config = storageClusterSession.loadConfig(fs::path{"storage.json"});
+      auto config = storageClusterSession.loadConfig(storageJsonPath);
       storageClusterSession.spawn(config, true);
       auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
 
@@ -211,7 +214,7 @@ SCENARIO("A CDN with Persisting FileBucket storage is restarted") {
     }
 
     WHEN("the master is spawned") {
-      auto config = masterSession.loadConfig(fs::path{"master.json"});
+      auto config = masterSession.loadConfig(masterJsonPath);
       masterSession.spawn(config, true);
       auto [masterLock, master] = masterSession.getNode();
       auto [storageClusterLock, storageCluster] = storageClusterSession.getNode();
