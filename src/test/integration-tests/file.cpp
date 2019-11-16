@@ -3,7 +3,7 @@
 #include <tuple>
 #include <functional>
 
-#include "include/catch.hpp"
+#include "../include/catch.hpp"
 
 #include "src/middlewares/file.hpp"
 #include "src/middlewares/Master/master.hpp"
@@ -31,8 +31,9 @@ auto static fbArgs = std::vector<fbInputArgs>{
   std::make_tuple(Size{2_mB}, std::vector<std::string>{std::string("test")}, std::vector<std::string>{std::string("test")})
 };
 
-auto storageJsonPath = fs::path{"../src/test/storage.json"};
-auto masterJsonPath = fs::path{"../src/test/master.json"};
+auto prefix = fs::path{"../src/test/integration-tests"};
+auto storageJsonPath = fs::path{prefix / "storage.json"};
+auto masterJsonPath = fs::path{prefix / "master.json"};
 
 SCENARIO("A new CDN is created") {
 

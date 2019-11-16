@@ -1,5 +1,6 @@
 ** Storage node
 *** TODO load from config
+*** TODO unit test on configuration/initialization of StorageNode
 *** TODO make volume store files
 *** TODO make virtual volume store files into volumes
 *** TODO make upload service put chunks from volume into storage
@@ -20,6 +21,9 @@
 
 ** Client node
 *** 
+
+** Testing
+*** DONE Split up unit tests and integrations tests into different folders
 
 * General
 ** DONE Make storage class use hashing Id rather than atomic int for file ids

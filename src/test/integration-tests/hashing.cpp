@@ -4,7 +4,7 @@
 #include <string>
 #include <ctype.h>
 
-#include "include/catch.hpp"
+#include "../include/catch.hpp"
 
 #include "src/hashing.hpp"
 

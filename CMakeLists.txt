@@ -16,7 +16,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread")
 # Export a JSON file with information about our build for irony-mode
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
-set(BASE_TEST_DIR ${PROJECT_SOURCE_DIR}/test)
+set(BASE_UNIT_TEST_DIR ${PROJECT_SOURCE_DIR}/test)
+set(BASE_INTEGRATION_TEST_DIR ${PROJECT_SOURCE_DIR}/test/integration-tests)
+
 # set(TINYCDN_TEST_SOURCES
 
 # )
@@ -68,11 +70,15 @@ set(SOURCES
   # src/middlewares/Client/client.cpp
 )
 
-set(TEST_SOURCES
-  src/test/hashing.cpp
-#  src/test/fileupload.cpp
-#  src/test/filehosting.cpp
-  src/test/file.cpp
+set(UNIT_TEST_SOURCES
+  src/test/volume.cpp
+)
+
+set(INTEGRATION_TEST_SOURCES
+  src/test/integration-tests/hashing.cpp
+#  src/test/integration-tests/fileupload.cpp
+#  src/test/integration-tests/filehosting.cpp
+  src/test/integration-tests/file.cpp
 )
 
 include_directories("${PROJECT_SOURCE_DIR}")
@@ -88,18 +94,29 @@ add_executable(Run src/main.cpp)
 target_link_libraries(TinyCDN_Base stdc++fs)
 target_link_libraries(Run TinyCDN_Base stdc++fs)
 
+
+
 # TODO make testing an option, see https://github.com/ComicSansMS/GhulbusBase/blob/master/CMakeLists.txt
-option(BUILD_TESTS "Compile tests" ON)
-if(BUILD_TESTS)
-  enable_testing()
-  add_library(Catch INTERFACE)
+enable_testing()
+add_library(Catch INTERFACE)
 
-  target_include_directories(Catch INTERFACE ${BASE_TEST_DIR}/include)
+target_include_directories(Catch INTERFACE ${BASE_UNIT_TEST_DIR}/include)
 
+option(BUILD_UNIT_TESTS "Compile unit tests" ON)
+if(BUILD_INTEGRATION_TESTS)
+ # Create the testing suite executable
+  add_executable(UnitTests ${INTEGRATION_TEST_SOURCES})
+  target_link_libraries(UnitTests TinyCDN_Base Catch stdc++fs)
+  add_test(NAME UnitTestsBase COMMAND UnitTests)
+endif()
+
+option(BUILD_INTEGRATION_TESTS "Compile integration tests" ON)
+if(BUILD_INTEGRATION_TESTS)
+target_include_directories(Catch INTERFACE ${BASE_UNIT_TEST_DIR}/include)
   # Create the testing suite executable
-  add_executable(Test ${TEST_SOURCES})
-  target_link_libraries(Test TinyCDN_Base Catch stdc++fs)
-  add_test(NAME TestBase COMMAND Test)
+  add_executable(IntegrationTests ${INTEGRATION_TEST_SOURCES})
+  target_link_libraries(IntegrationTests TinyCDN_Base Catch stdc++fs)
+  add_test(NAME IntegrationTestsBase COMMAND IntgerationTests)
 endif()
 
 option(BUILD_CFFI "Generate the shared library" OFF)
