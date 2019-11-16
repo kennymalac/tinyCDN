@@ -6,7 +6,7 @@
 using namespace TinyCDN;
 using namespace TinyCDN::Utility;
 
-SCENARIO("A CDN storage node is used to store filebuckets into volumes") {
+TEST_CASE("Volume") {
   GIVEN("A spawned CDN Master with setup communication to a CDN Volume server") {
     auto* master = (new MasterNodeSingleton)->getInstance(false);
     master->spawnCDN(); // opens a socket

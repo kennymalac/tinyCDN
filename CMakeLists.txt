@@ -71,11 +71,11 @@ set(SOURCES
 )
 
 set(UNIT_TEST_SOURCES
+  src/test/hashing.cpp
   src/test/volume.cpp
 )
 
 set(INTEGRATION_TEST_SOURCES
-  src/test/integration-tests/hashing.cpp
 #  src/test/integration-tests/fileupload.cpp
 #  src/test/integration-tests/filehosting.cpp
   src/test/integration-tests/file.cpp
@@ -105,14 +105,13 @@ target_include_directories(Catch INTERFACE ${BASE_UNIT_TEST_DIR}/include)
 option(BUILD_UNIT_TESTS "Compile unit tests" ON)
 if(BUILD_INTEGRATION_TESTS)
  # Create the testing suite executable
-  add_executable(UnitTests ${INTEGRATION_TEST_SOURCES})
+  add_executable(UnitTests ${UNIT_TEST_SOURCES})
   target_link_libraries(UnitTests TinyCDN_Base Catch stdc++fs)
   add_test(NAME UnitTestsBase COMMAND UnitTests)
 endif()
 
 option(BUILD_INTEGRATION_TESTS "Compile integration tests" ON)
 if(BUILD_INTEGRATION_TESTS)
-target_include_directories(Catch INTERFACE ${BASE_UNIT_TEST_DIR}/include)
   # Create the testing suite executable
   add_executable(IntegrationTests ${INTEGRATION_TEST_SOURCES})
   target_link_libraries(IntegrationTests TinyCDN_Base Catch stdc++fs)

@@ -35,7 +35,7 @@ auto prefix = fs::path{"../src/test/integration-tests"};
 auto storageJsonPath = fs::path{prefix / "storage.json"};
 auto masterJsonPath = fs::path{prefix / "master.json"};
 
-SCENARIO("A new CDN is created") {
+SCENARIO("A new CDN is created", "[integration]") {
 
   GIVEN("a new Master Session and StorageCluster") {
     MasterSession masterSession;

@@ -26,7 +26,7 @@ static std::string testValue =
         blah blahblah blah blah
         )";
 
-SCENARIO("a user uploads a file to the CDN") {
+SCENARIO("a user uploads a file to the CDN", "[integration]") {
 
   GIVEN("a temporary file has been already stored and MasterNode initialized and an upload session exists") {
     std::string fileName = "copyThis.txt";

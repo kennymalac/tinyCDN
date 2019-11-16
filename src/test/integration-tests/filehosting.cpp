@@ -26,7 +26,7 @@ static std::string testValue =
 	blah blahblah blah blah
 	)";
 
-SCENARIO("a user retrieves a file to the CDN") {
+SCENARIO("a user retrieves a file to the CDN", "[integration]") {
 
   GIVEN("a StoredFile has been already stored in a FileBucket, a MasterNode initialized, and a hosting session exists") {
     // Get a new master node
