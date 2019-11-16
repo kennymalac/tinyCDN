@@ -92,6 +92,7 @@ public:
   inline void setSize(uintmax_t size) {
     size = size;
   };
+  uintmax_t defaultVolumeSize;
 
   std::optional<std::tuple<std::unique_lock<std::shared_mutex>, MaybeAnyStorageVolume>> getStorageVolume(VolumeId id);
   template <typename T>
@@ -111,7 +112,6 @@ public:
 
 private:
   IdFactory idFactory;
-  uintmax_t defaultVolumeSize;
   uintmax_t size;
 
   std::unordered_map<VolumeId, std::shared_mutex, IdHasher> volumeMutexes;

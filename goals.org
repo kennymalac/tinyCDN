@@ -1,3 +1,4 @@
+* Middleware Functionality
 ** Storage node
 *** TODO load from config
 *** TODO unit test on configuration/initialization of StorageNode
@@ -22,9 +23,6 @@
 ** Client node
 *** 
 
-** Testing
-*** DONE Split up unit tests and integrations tests into different folders
-
 * General
 ** DONE Make storage class use hashing Id rather than atomic int for file ids
 ** DONE make Id class use bitset internally
@@ -42,3 +40,34 @@
 ** TODO Dockerfiles for master node, storage node, and client node
 ** TODO replication strategy class (geolocation, backup, & )
 ** TODO owned filebuckets
+
+* Testing
+** DONE Split up unit tests and integrations tests into different folders
+** TODO basic serialization/deserialization tests for StorageClusterNode, MasterNode, VirtualVolume
+
+** Integration testing
+*** TODO revise filehosting
+*** TODO revise fileuploading
+
+** Unit testing
+*** Volume
+**** TODO creation
+*** VirtualVolume
+**** TODO commit new StorageVolume
+**** TODO addFileBucketVolume
+**** TODO "mount" existing volume - i.e. loadDb and fbVolDb
+*** StorageVolume
+**** TODO creation
+*** StorageVolumeManager
+**** TODO new StorageVolume
+**** TODO setSize
+*** StorageClusterMarshaller
+**** TODO marshall instance from config
+
+*** TODO VolumeMarshaller load from JSON into Volume instance
+*** TODO 
+*** Protocol
+**** TODO StorageClusterNode initialization request/response
+**** TODO Master StorageClusterNode initialization acknowledgment request/response
+
+

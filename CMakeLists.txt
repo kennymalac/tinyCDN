@@ -71,9 +71,10 @@ set(SOURCES
 )
 
 set(UNIT_TEST_SOURCES
-  src/test/master.cpp
+  src/test/middlewares/Master/master.cpp
   src/test/hashing.cpp
-  src/test/volume.cpp
+  src/test/middlewares/Volume/volume.cpp
+  src/test/middlewares/Volume/marshaller.cpp
 )
 
 set(INTEGRATION_TEST_SOURCES
