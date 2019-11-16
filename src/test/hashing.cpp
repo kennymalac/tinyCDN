@@ -25,13 +25,12 @@ bool isValidHex(std::string s) {
 TEST_CASE("PseudoRandomHexFactory", "[utility]") {
   PseudoRandomHexFactory generator;
 
-  WHEN("Random strings are generated") {
+  SECTION("Generating Random strings") {
     auto* hex8 = generator(8);
     auto* hex32 = generator(32);
     auto* hex64 = generator(64);
 
-
-    THEN("A random hex of the specified length is returned for each") {
+    SECTION("The random strings are hex C-strings of the specified length") {
       std::cout << "hex8: "  << hex8  << " | " \
 		<< "hex32: " << hex32 << " | " \
 		<< "hex64: " << hex64 << ";\n";
@@ -49,31 +48,33 @@ TEST_CASE("PseudoRandomHexFactory", "[utility]") {
 TEST_CASE("UUID4Factory", "[utility]") {
   UUID4Factory generator;
 
-  WHEN("UUID4 is generated") {
+  SECTION("UUID4 is generated") {
     auto id = generator();
+    auto id8 = id.str().substr(0,8);
+    auto id4_1 = id.str().substr(9,4);
+    auto id4_2 = id.str().substr(14,4);
+    auto id4_3 = id.str().substr(19, 4);
+    auto id10 = id.str().substr(24, 12);
 
-    THEN("a proper UUID4 is returned") {
-      std::cout << "UUID4: " << id << "\n";
+    std::cout << "UUID4: " << id << "\n";
+    REQUIRE( typeid(id) == typeid(UUID4) );
 
-      REQUIRE( typeid(id) == typeid(UUID4) );
+    SECTION("UUID4 str is a valid hex C-string and of the required length") {
       REQUIRE( strlen(id.str().c_str()) == 36 );
 
-      auto id8 = id.str().substr(0,8);
       std::cout << "id8: " << id8 << "\n";
       REQUIRE( isValidHex(id8) );
-      auto id4_1 = id.str().substr(9,4);
       std::cout << "id4_1: " << id4_1 << "\n";
       REQUIRE( isValidHex(id4_1) );
-      auto id4_2 = id.str().substr(14,4);
       std::cout << "id4_2: " << id4_2 << "\n";
       REQUIRE( isValidHex(id4_2) );
-      auto id4_3 = id.str().substr(19, 4);
       std::cout << "id4_3: " << id4_3 << "\n";
       REQUIRE( isValidHex(id4_3) );
-      auto id10 = id.str().substr(24, 12);
       std::cout << "id10: " << id10 << "\n";
       REQUIRE( isValidHex(id10) );
+    }
 
+    SECTION("UUID4 version bit is set correctly") {
       // Version should be set to 4
       REQUIRE( id4_2[0] == '4' );
 
@@ -85,4 +86,3 @@ TEST_CASE("UUID4Factory", "[utility]") {
     }
   }
 }
-

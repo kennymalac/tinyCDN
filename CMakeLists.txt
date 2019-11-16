@@ -71,6 +71,7 @@ set(SOURCES
 )
 
 set(UNIT_TEST_SOURCES
+  src/test/master.cpp
   src/test/hashing.cpp
   src/test/volume.cpp
 )
@@ -99,7 +100,6 @@ target_link_libraries(Run TinyCDN_Base stdc++fs)
 # TODO make testing an option, see https://github.com/ComicSansMS/GhulbusBase/blob/master/CMakeLists.txt
 enable_testing()
 add_library(Catch INTERFACE)
-
 target_include_directories(Catch INTERFACE ${BASE_UNIT_TEST_DIR}/include)
 
 option(BUILD_UNIT_TESTS "Compile unit tests" ON)
@@ -115,7 +115,7 @@ if(BUILD_INTEGRATION_TESTS)
   # Create the testing suite executable
   add_executable(IntegrationTests ${INTEGRATION_TEST_SOURCES})
   target_link_libraries(IntegrationTests TinyCDN_Base Catch stdc++fs)
-  add_test(NAME IntegrationTestsBase COMMAND IntgerationTests)
+  add_test(NAME IntegrationTestsBase COMMAND IntegrationTests)
 endif()
 
 option(BUILD_CFFI "Generate the shared library" OFF)

@@ -111,6 +111,14 @@ SCENARIO("A new CDN is created", "[integration]") {
 	REQUIRE( fs::is_empty(fs::path{"REGISTRY"}) == true );
 	// REQUIRE();
 
+
+      // AND_WHEN("A bucket is created") {
+      // 	  THEN("The master assigns a volume to the bucket") {
+      // 	  }
+      // 	  THEN("The virtual volume can retrieve bucket files as a volume") {
+      // 	  }
+      // 	}
+
       AND_WHEN("FileBuckets are created by the FileBucketRegistry") {
 
 	std::vector<std::unique_ptr<file::FileBucket>> fileBuckets;
